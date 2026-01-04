@@ -1,0 +1,8 @@
+nav_logo-*.png
+/node_modules
+.env
+.DS_Store
+dist/
+coverage/
+npm-debug.log*
+yarn-debug.log*

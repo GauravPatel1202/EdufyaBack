@@ -6,11 +6,29 @@ export interface INode {
   data: {
     label: string;
     description?: string;
+    estimatedTime?: number; // in minutes
+    documentationLinks?: {
+      title: string;
+      url: string;
+      type?: 'official' | 'tutorial' | 'article' | 'video';
+    }[];
+    codeSnippets?: {
+      title: string;
+      language: string;
+      code: string;
+      description?: string;
+    }[];
+    resources?: {
+      title: string;
+      url: string;
+      type?: 'tool' | 'library' | 'framework' | 'other';
+    }[];
     questions?: {
       title: string;
       difficulty: 'easy' | 'medium' | 'hard';
       link?: string;
     }[];
+    keyPoints?: string[]; // Important takeaways
   };
   position: { x: number; y: number };
 }
@@ -39,11 +57,29 @@ const NodeSchema = new Schema({
   data: {
     label: { type: String, required: true },
     description: String,
+    estimatedTime: Number,
+    documentationLinks: [{
+      title: String,
+      url: String,
+      type: { type: String, enum: ['official', 'tutorial', 'article', 'video'] }
+    }],
+    codeSnippets: [{
+      title: String,
+      language: String,
+      code: String,
+      description: String
+    }],
+    resources: [{
+      title: String,
+      url: String,
+      type: { type: String, enum: ['tool', 'library', 'framework', 'other'] }
+    }],
     questions: [{
       title: String,
       difficulty: { type: String, enum: ['easy', 'medium', 'hard'] },
       link: String
-    }]
+    }],
+    keyPoints: [String]
   },
   position: {
     x: { type: Number, default: 0 },

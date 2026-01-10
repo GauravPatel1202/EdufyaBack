@@ -39,6 +39,8 @@ const seedCourses = async () => {
     console.log('Connecting to MongoDB...');
     await mongoose.connect(MONGODB_URI);
     console.log('Connected!');
+    await Course.deleteMany({});
+    console.log('Cleared existing courses');
 
     const courses = Array.from({ length: 50 }, (_, i) => generateCourse(i));
 

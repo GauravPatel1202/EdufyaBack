@@ -1,9 +1,6 @@
 import { Request, Response } from 'express';
 import JobRole from '../models/JobRole';
 import User from '../models/User';
-import Skill from '../models/Skill';
-import mongoose from 'mongoose';
-
 export const getAllJobRoles = async (req: Request, res: Response) => {
   try {
     const roles = await JobRole.find();
@@ -59,11 +56,20 @@ export const getCareerStats = async (req: Request, res: Response) => {
 
     const readinessScore = Math.round((totalCurrent / totalRequired) * 100);
 
-    // Mock job recommendations
-    const recommendations = [
-      { id: 'job1', title: `${targetRole.title} at TechCorp`, location: 'Remote', salary: '$95k' },
-      { id: 'job2', title: `Junior ${targetRole.title} at StartupInc`, location: 'San Francisco', salary: '$85k' }
-    ];
+    // Dynamic job recommendations (simplified logic)
+    const recommendations = skillGaps
+      .filter((gap: any) => gap.gap > 0)
+      .slice(0, 3)
+      .map((gap: any) => ({ 
+        id: `rec-${gap.name}`, 
+        title: `Master ${gap.name} with our targeted learning path`, 
+        location: 'Online', 
+        salary: 'Career Growth' 
+      }));
+
+    if (recommendations.length === 0) {
+        recommendations.push({ id: 'top', title: 'You are ready for this role! Explore advanced specializations.', location: 'Global', salary: 'Top Tier' });
+    }
 
     return res.json({
       targetRole: targetRole.title,

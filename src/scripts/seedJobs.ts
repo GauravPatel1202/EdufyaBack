@@ -55,6 +55,8 @@ const seedJobs = async () => {
     console.log('Connecting to MongoDB...');
     await mongoose.connect(MONGODB_URI);
     console.log('Connected!');
+    await JobRole.deleteMany({});
+    console.log('Cleared existing job roles');
 
     const jobs = Array.from({ length: 50 }, (_, i) => generateJobRole(i));
 

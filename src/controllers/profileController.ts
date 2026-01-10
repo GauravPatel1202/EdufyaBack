@@ -23,7 +23,8 @@ export const getProfile = async (req: Request, res: Response) => {
       experience: user.experience || [],
       education: user.education || [],
       socialLinks: user.socialLinks || {},
-      resumeUrl: user.resumeUrl || ''
+      resumeUrl: user.resumeUrl || '',
+      activityLog: user.activityLog || []
     };
 
     res.json(profileData);

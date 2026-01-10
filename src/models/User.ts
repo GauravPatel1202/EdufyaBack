@@ -21,6 +21,7 @@ export interface IUser extends Document {
     portfolio?: string;
   };
   resumeUrl?: string;
+  activityLog: { date: string; count: number }[];
 }
 
 const ExperienceSchema = new Schema({
@@ -65,7 +66,11 @@ const UserSchema: Schema = new Schema({
     twitter: String,
     portfolio: String
   },
-  resumeUrl: String
+  resumeUrl: String,
+  activityLog: [{
+    date: { type: String, required: true },
+    count: { type: Number, default: 0 }
+  }]
 }, { timestamps: true });
 
 export default mongoose.model<IUser>('User', UserSchema);

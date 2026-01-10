@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import LearningPath from '../models/LearningPath';
 import UserLearningProgress from '../models/UserLearningProgress';
+import User from '../models/User';
 
 export const getAllPaths = async (req: Request, res: Response) => {
   try {
@@ -96,10 +97,55 @@ export const completeNode = async (req: Request, res: Response) => {
             
             progress.lastAccessedAt = new Date();
             await progress.save();
+
+            // Update user activity log
+            const dateStr = new Date().toISOString().split('T')[0];
+            const user = await User.findById(userId);
+            if (user) {
+                const logEntry = user.activityLog.find((l: any) => l.date === dateStr);
+                if (logEntry) {
+                    logEntry.count += 1;
+                } else {
+                    user.activityLog.push({ date: dateStr, count: 1 });
+                }
+                await user.save();
+            }
         }
         
         res.json({ message: 'Node marked as complete', nodeId, progress });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
+};
+
+// Admin Controllers
+export const createLearningPath = async (req: Request, res: Response) => {
+  try {
+    const path = await LearningPath.create(req.body);
+    res.status(201).json(path);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateLearningPath = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const path = await LearningPath.findByIdAndUpdate(id, req.body, { new: true });
+    if (!path) return res.status(404).json({ error: 'Learning path not found' });
+    res.json(path);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteLearningPath = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const path = await LearningPath.findByIdAndDelete(id);
+    if (!path) return res.status(404).json({ error: 'Learning path not found' });
+    res.json({ message: 'Learning path deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 };

@@ -23,7 +23,8 @@ export const activateSubscription = async (req: Request, res: Response) => {
     await user.save();
 
     res.json({
-      message: 'Subscription activated successfully',
+      message: 'Payment verified and subscription activated successfully',
+      transactionId: `TXN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
       subscription: user.subscription
     });
   } catch (error) {

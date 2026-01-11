@@ -24,13 +24,8 @@ export const register = async (req: Request, res: Response) => {
       password: hashedPassword,
       firstName,
       lastName,
-      role: 'student',
-      // Auto-grant subscription for now
-      subscription: {
-        status: 'active',
-        startDate: new Date(),
-        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
-      }
+      role: 'student'
+      // Subscription will be inactive by default
     });
 
     await newUser.save();
@@ -75,15 +70,6 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Auto-fix subscription if missing or inactive on login
-    if (!user.subscription || user.subscription.status !== 'active') {
-       user.subscription = {
-         status: 'active',
-         startDate: new Date(),
-         expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
-       };
-       await user.save();
-    }
 
     // Generate token
     const token = jwt.sign(

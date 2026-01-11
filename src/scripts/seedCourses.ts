@@ -6,7 +6,7 @@ import path from 'path';
 // Load env vars
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-const MONGODB_URI = 'mongodb+srv://edufyai:abcdefg@cluster0.fzjmokw.mongodb.net/edufya?retryWrites=true&w=majority&appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI || '';
 
 const categories = [
   'Web Development', 'Data Science', 'Mobile Development', 'UI/UX Design', 

@@ -3,7 +3,7 @@ import Course from '../models/Course';
 
 export const getAllCourses = async (req: Request, res: Response) => {
   try {
-    const courses = await Course.find();
+    const courses = await Course.find().lean();
     res.json(courses);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching courses', error });
@@ -12,7 +12,7 @@ export const getAllCourses = async (req: Request, res: Response) => {
 
 export const getCourseById = async (req: Request, res: Response) => {
   try {
-    const course = await Course.findById(req.params.id);
+    const course = await Course.findById(req.params.id).lean();
     if (!course) {
       return res.status(404).json({ message: 'Course not found' });
     }

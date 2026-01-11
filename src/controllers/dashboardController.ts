@@ -28,8 +28,8 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       : 0;
     
     // In a real app, study time would be calculated from sessions. 
-    // For now, we use a placeholder or derived value.
-    const studyTime = Math.floor(Math.random() * 20) + 5; 
+    // Now we use the persisted value or a safe default.
+    const studyTime = user.studyTime || 12; // 12h default seed 
 
     // Prepare career stats
     const targetRole = user.targetRoleId as any;
@@ -71,12 +71,32 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       };
     }
 
+    // Skill Verification Data
+    const skillList = [];
+    if (user.skillProficiency) {
+        // Handle Map or Object
+        const skills = user.skillProficiency instanceof Map 
+            ? Object.fromEntries(user.skillProficiency) 
+            : user.skillProficiency;
+
+        for (const [name, score] of Object.entries(skills)) {
+            skillList.push({
+                name,
+                status: (score as number) >= 80 ? 'Verified' : 'Pending',
+                score: score as number
+            });
+        }
+    }
+    // No more default skills for verification
+
     res.json({
       user: {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        activityLog: user.activityLog || []
+        activityLog: user.activityLog || [],
+        streak: user.streak || 0,
+        dailyGoal: user.dailyGoal || { title: "Complete 1 Lesson", progress: 0, total: 1 }
       },
       stats: {
         enrolledCourses: totalPaths, // Using paths as active learning
@@ -89,7 +109,9 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       },
       courses: allCourses,
       jobs: allJobs,
-      careerStats
+      careerStats,
+      skillVerification: skillList,
+      applications: user.jobApplications || []
     });
 
   } catch (error: any) {

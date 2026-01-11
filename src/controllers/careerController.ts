@@ -1,10 +1,22 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import JobRole from '../models/JobRole';
 import User from '../models/User';
 export const getAllJobRoles = async (req: Request, res: Response) => {
   try {
-    const roles = await JobRole.find();
+    const roles = await JobRole.find().lean();
     return res.json(roles);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getJobRoleById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const role = await JobRole.findById(id).lean();
+    if (!role) return res.status(404).json({ message: 'Job role not found' });
+    return res.json(role);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -27,7 +39,7 @@ export const setTargetRole = async (req: Request, res: Response) => {
 export const getCareerStats = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const user = await User.findById(userId).populate('targetRoleId') as any;
+    const user = await User.findById(userId).populate('targetRoleId').lean() as any;
     const targetRole = user?.targetRoleId;
     if (!targetRole) return res.json({ readinessScore: 0, skillGaps: [], message: 'No target role set' });
 
@@ -78,6 +90,104 @@ export const getCareerStats = async (req: Request, res: Response) => {
       recommendations,
       marketDemand: targetRole.marketDemand
     });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+// HR: Create a new job role
+export const createJobRole = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { title, company, description, requiredSkills, marketDemand, type, externalUrl } = req.body;
+
+    const newJob = new JobRole({
+      title,
+      company,
+      description,
+      requiredSkills,
+      marketDemand,
+      type,
+      externalUrl,
+      postedBy: userId,
+      applicants: []
+    });
+
+    await newJob.save();
+    return res.status(201).json(newJob);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// HR: Delete a job role
+export const deleteJobRole = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user.userId;
+
+    // Optional: Add logic to check if user is the one who posted it
+    const job = await JobRole.findById(id);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    // if (job.postedBy.toString() !== userId) return res.status(403).json({ message: 'Not authorized' });
+
+    await JobRole.findByIdAndDelete(id);
+    return res.json({ message: 'Job deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// HR: Get applicants for a job
+export const getJobApplicants = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const job = await JobRole.findById(id).populate('applicants.userId', 'firstName lastName email resumeUrl skillProficiency').lean() as any;
+    
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    
+    return res.json(job.applicants);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const applyForJob = async (req: Request, res: Response) => {
+  try {
+    const { jobId } = req.body;
+    const userId = (req as any).user.userId;
+
+    const job = await JobRole.findById(jobId);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    if (job.type !== 'internal') return res.status(400).json({ message: 'This job requires external application' });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Check if already applied
+    const alreadyApplied = user.jobApplications.some(app => app.jobId.toString() === jobId);
+    if (alreadyApplied) return res.status(400).json({ message: 'Already applied for this role' });
+
+    // Add to User's applications
+    user.jobApplications.push({
+      jobId: job._id as mongoose.Types.ObjectId,
+      role: job.title,
+      company: job.company,
+      status: 'Applied',
+      appliedDate: new Date()
+    });
+    await user.save();
+
+    // Add to Job's applicants
+    job.applicants.push({
+      userId: user._id as mongoose.Types.ObjectId,
+      status: 'Applied',
+      appliedDate: new Date(),
+      resumeUrl: user.resumeUrl
+    });
+    await job.save();
+
+    return res.json({ message: 'Application successful', applications: user.jobApplications });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

@@ -22,6 +22,25 @@ export interface IUser extends Document {
   };
   resumeUrl?: string;
   activityLog: { date: string; count: number }[];
+  studyTime?: number;
+  streak: number;
+  dailyGoal: {
+    title: string;
+    progress: number;
+    total: number;
+  };
+  jobApplications: {
+    jobId: mongoose.Types.ObjectId | string;
+    company: string;
+    role: string;
+    status: 'Applied' | 'Interview' | 'Offer' | 'Rejected';
+    appliedDate: Date;
+  }[];
+  subscription: {
+    status: 'active' | 'inactive';
+    startDate?: Date;
+    expiryDate?: Date;
+  };
 }
 
 const ExperienceSchema = new Schema({
@@ -60,17 +79,31 @@ const UserSchema: Schema = new Schema({
   location: String,
   experience: [ExperienceSchema],
   education: [EducationSchema],
-  socialLinks: {
-    linkedin: String,
-    github: String,
-    twitter: String,
-    portfolio: String
-  },
   resumeUrl: String,
   activityLog: [{
     date: { type: String, required: true },
     count: { type: Number, default: 0 }
-  }]
+  }],
+  // Gamification & Tracking
+  studyTime: { type: Number, default: 0 }, // Total hours
+  streak: { type: Number, default: 0 },
+  dailyGoal: {
+    title: { type: String, default: "Complete 1 Lesson" },
+    progress: { type: Number, default: 0 },
+    total: { type: Number, default: 1 }
+  },
+  jobApplications: [{
+    jobId: { type: Schema.Types.ObjectId, ref: 'JobRole' },
+    company: String,
+    role: String,
+    status: { type: String, enum: ['Applied', 'Interview', 'Offer', 'Rejected'], default: 'Applied' },
+    appliedDate: { type: Date, default: Date.now }
+  }],
+  subscription: {
+    status: { type: String, enum: ['active', 'inactive'], default: 'inactive' },
+    startDate: Date,
+    expiryDate: Date
+  }
 }, { timestamps: true });
 
 export default mongoose.model<IUser>('User', UserSchema);

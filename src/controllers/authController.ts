@@ -24,7 +24,13 @@ export const register = async (req: Request, res: Response) => {
       password: hashedPassword,
       firstName,
       lastName,
-      role: 'student'
+      role: 'student',
+      // Auto-grant subscription for now
+      subscription: {
+        status: 'active',
+        startDate: new Date(),
+        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
+      }
     });
 
     await newUser.save();
@@ -44,7 +50,8 @@ export const register = async (req: Request, res: Response) => {
         email: newUser.email,
         firstName: newUser.firstName,
         lastName: newUser.lastName,
-        role: newUser.role
+        role: newUser.role,
+        subscription: newUser.subscription
       }
     });
   } catch (error: any) {
@@ -68,6 +75,16 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Auto-fix subscription if missing or inactive on login
+    if (!user.subscription || user.subscription.status !== 'active') {
+       user.subscription = {
+         status: 'active',
+         startDate: new Date(),
+         expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
+       };
+       await user.save();
+    }
+
     // Generate token
     const token = jwt.sign(
       { userId: user._id, email: user.email, role: user.role },
@@ -83,7 +100,8 @@ export const login = async (req: Request, res: Response) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role
+        role: user.role,
+        subscription: user.subscription
       }
     });
   } catch (error: any) {
@@ -107,7 +125,8 @@ export const verifyToken = async (req: Request, res: Response) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role
+        role: user.role,
+        subscription: user.subscription
       }
     });
   } catch (error: any) {

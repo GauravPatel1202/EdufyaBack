@@ -47,10 +47,11 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// CORS configuration
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow all origins that make requests
-    // Reflection of origin is necessary when credentials are true
+    // Reflecting the incoming origin allows "all" while supporting credentials: true
     callback(null, true);
   },
   credentials: true,

@@ -56,9 +56,11 @@ export const getMyPaths = async (req: Request, res: Response) => {
     const progresses = await UserLearningProgress.find({ userId }).populate('learningPathId');
     
     // Transform to match frontend expected structure
-    const paths = progresses.map(p => ({
+    const paths = progresses
+      .filter(p => p.learningPathId) // Ensure path doc exists
+      .map(p => ({
         ...p.toObject(),
-        path: p.learningPathId, // Populate puts the doc here
+        path: p.learningPathId,
         learningPathId: (p.learningPathId as any)._id
     }));
 

@@ -64,8 +64,22 @@ app.use(express.json());
 // Metrics Middleware
 app.use(metricsMiddleware);
 
-// Metrics endpoint
-app.get('/metrics', getMetrics);
+// Health check and root verification
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    message: 'Welcome to Edufya AI API',
+    version: '1.0.0'
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
 
 // Routes
 app.use('/api/career', careerRoutes);

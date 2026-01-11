@@ -34,12 +34,15 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     // Prepare career stats
     const targetRole = user.targetRoleId as any;
     let careerStats = null;
-    if (targetRole) {
+    if (targetRole && targetRole.requiredSkills) {
       const userProficiency = user.skillProficiency || new Map();
       const skillGaps = targetRole.requiredSkills.map((reqSkill: any) => {
-        const currentLevel = userProficiency instanceof Map 
-          ? (userProficiency.get(reqSkill.name) || 0)
-          : (userProficiency[reqSkill.name] || 0);
+        let currentLevel = 0;
+        if (userProficiency instanceof Map) {
+          currentLevel = userProficiency.get(reqSkill.name) || 0;
+        } else if (userProficiency) {
+          currentLevel = (userProficiency as any)[reqSkill.name] || 0;
+        }
         
         return {
           name: reqSkill.name,
@@ -49,15 +52,18 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
         };
       });
 
-      const totalRequired = targetRole.requiredSkills.reduce((sum: number, s: any) => sum + s.level, 0);
+      const totalRequired = targetRole.requiredSkills.reduce((sum: number, s: any) => sum + (s.level || 0), 0);
       const totalCurrent = targetRole.requiredSkills.reduce((sum: number, s: any) => {
-        const currentLevel = userProficiency instanceof Map 
-          ? (userProficiency.get(s.name) || 0)
-          : (userProficiency[s.name] || 0);
-        return sum + Math.min(s.level, currentLevel);
+        let currentLevel = 0;
+        if (userProficiency instanceof Map) {
+          currentLevel = userProficiency.get(s.name) || 0;
+        } else if (userProficiency) {
+          currentLevel = (userProficiency as any)[s.name] || 0;
+        }
+        return sum + Math.min(s.level || 0, currentLevel);
       }, 0);
 
-      const readinessScore = Math.round((totalCurrent / totalRequired) * 100);
+      const readinessScore = totalRequired > 0 ? Math.round((totalCurrent / totalRequired) * 100) : 0;
       
       careerStats = {
         targetRole: targetRole.title,
@@ -75,19 +81,23 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     const skillList = [];
     if (user.skillProficiency) {
         // Handle Map or Object
-        const skills = user.skillProficiency instanceof Map 
-            ? Object.fromEntries(user.skillProficiency) 
-            : user.skillProficiency;
+        let skills: any = {};
+        if (user.skillProficiency instanceof Map) {
+            skills = Object.fromEntries(user.skillProficiency);
+        } else if (typeof user.skillProficiency === 'object') {
+            skills = user.skillProficiency;
+        }
 
-        for (const [name, score] of Object.entries(skills)) {
-            skillList.push({
-                name,
-                status: (score as number) >= 80 ? 'Verified' : 'Pending',
-                score: score as number
-            });
+        if (skills) {
+            for (const [name, score] of Object.entries(skills)) {
+                skillList.push({
+                    name,
+                    status: (score as number) >= 80 ? 'Verified' : 'Pending',
+                    score: score as number
+                });
+            }
         }
     }
-    // No more default skills for verification
 
     res.json({
       user: {
@@ -99,7 +109,7 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
         dailyGoal: user.dailyGoal || { title: "Complete 1 Lesson", progress: 0, total: 1 }
       },
       stats: {
-        enrolledCourses: totalPaths, // Using paths as active learning
+        enrolledCourses: totalPaths,
         completionRate: Math.round(avgCompletion),
         studyTime: studyTime
       },
@@ -115,6 +125,10 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    console.error('Error in getDashboardSummary:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch dashboard summary',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    });
   }
 };

@@ -8,8 +8,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "typeRoots": ["./node_modules/@types", "./src/types"]
+  },
+  "ts-node": {
+    "files": true
   },
   "include": ["src/**/*"],
+  "files": ["src/types/express.d.ts"],
   "exclude": ["node_modules"]
 }

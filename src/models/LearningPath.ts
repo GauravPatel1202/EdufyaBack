@@ -7,6 +7,8 @@ export interface INode {
     label: string;
     description?: string;
     estimatedTime?: number; // in minutes
+    videoUrl?: string; // YouTube video ID or URL
+    isPremium?: boolean; // Whether this content requires premium access
     documentationLinks?: {
       title: string;
       url: string;
@@ -24,10 +26,22 @@ export interface INode {
       type?: 'tool' | 'library' | 'framework' | 'other';
     }[];
     questions?: {
-      title: string;
+      id: string;
+      text: string;
+      options: string[];
+      correctAnswer: number;
+      explanation: string;
+    }[]; // Quiz questions
+    interviewQuestions?: {
+      question: string;
       difficulty: 'easy' | 'medium' | 'hard';
-      link?: string;
-    }[];
+      expectedAnswer?: string;
+    }[]; // Mock interview questions
+    industrialStandards?: {
+      title: string;
+      description: string;
+      isCompleted?: boolean;
+    }[]; // Production-ready checklist
     keyPoints?: string[]; // Important takeaways
   };
   position: { x: number; y: number };
@@ -58,6 +72,8 @@ const NodeSchema = new Schema({
     label: { type: String, required: true },
     description: String,
     estimatedTime: Number,
+    videoUrl: String, // YouTube video ID or URL
+    isPremium: { type: Boolean, default: false },
     documentationLinks: [{
       title: String,
       url: String,
@@ -75,10 +91,22 @@ const NodeSchema = new Schema({
       type: { type: String, enum: ['tool', 'library', 'framework', 'other'] }
     }],
     questions: [{
-      title: String,
+      id: String,
+      text: String,
+      options: [String],
+      correctAnswer: Number,
+      explanation: String
+    }], // Quiz questions
+    interviewQuestions: [{
+      question: String,
       difficulty: { type: String, enum: ['easy', 'medium', 'hard'] },
-      link: String
-    }],
+      expectedAnswer: String
+    }], // Mock interview questions
+    industrialStandards: [{
+      title: String,
+      description: String,
+      isCompleted: { type: Boolean, default: false }
+    }], // Production-ready checklist
     keyPoints: [String]
   },
   position: {

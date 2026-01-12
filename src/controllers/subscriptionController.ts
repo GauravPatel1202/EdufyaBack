@@ -10,7 +10,7 @@ const razorpay = new Razorpay({
 
 export const createRazorpayOrder = async (req: Request, res: Response) => {
   try {
-    const amount = 1 * 100; // Amount in paise (₹350)
+    const amount = 350 * 100; // Amount in paise (₹350)
     const options = {
       amount,
       currency: 'INR',

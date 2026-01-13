@@ -57,12 +57,22 @@ export const getMyPaths = async (req: Request, res: Response) => {
     
     // Transform to match frontend expected structure
     const paths = progresses
-      .filter(p => p.learningPathId) // Ensure path doc exists
-      .map(p => ({
-        ...p.toObject(),
-        path: p.learningPathId,
-        learningPathId: (p.learningPathId as any)._id
-    }));
+      .filter(p => p && p.learningPathId) // Ensure path doc exists
+      .map(p => {
+        try {
+            const pathDoc = p.learningPathId as any;
+            if (!pathDoc || !pathDoc._id) return null;
+            
+            return {
+                ...p.toObject(),
+                path: pathDoc,
+                learningPathId: pathDoc._id
+            };
+        } catch (e) {
+            return null;
+        }
+    })
+    .filter(p => p !== null);
 
     res.json({ paths });
   } catch (error: any) {
@@ -78,8 +88,6 @@ export const completeNode = async (req: Request, res: Response) => {
         // Find progress
         let progress = await UserLearningProgress.findOne({ userId, learningPathId });
         if (!progress) {
-             // Optional: Auto-enroll if not enrolled?
-             // For now, assume must be enrolled.
              return res.status(404).json({ error: 'Not enrolled in this path' });
         }
 
@@ -90,8 +98,6 @@ export const completeNode = async (req: Request, res: Response) => {
             // Recalculate percentage
             const path = await LearningPath.findById(learningPathId);
             if (path && path.nodes && path.nodes.length > 0) {
-                // Count only 'topic' nodes or all nodes?
-                // Let's count all nodes provided in schema
                 const total = path.nodes.length;
                 const completed = progress.completedNodes.length;
                 progress.completionPercentage = Math.round((completed / total) * 100);
@@ -115,6 +121,30 @@ export const completeNode = async (req: Request, res: Response) => {
         }
         
         res.json({ message: 'Node marked as complete', nodeId, progress });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const updateProgress = async (req: Request, res: Response) => {
+    try {
+        const { learningPathId, courseId, timeSpent } = req.body;
+        const userId = (req as any).user.userId;
+
+        let progress = await UserLearningProgress.findOne({ userId, learningPathId });
+        
+        if (!progress) {
+             return res.status(404).json({ error: 'Not enrolled in this path' });
+        }
+
+        if (timeSpent) {
+            progress.totalTimeSpent = (progress.totalTimeSpent || 0) + timeSpent;
+        }
+
+        progress.lastAccessedAt = new Date();
+        await progress.save();
+
+        res.json({ message: 'Progress updated', progress });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }

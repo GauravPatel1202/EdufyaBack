@@ -5,6 +5,7 @@ import {
     enrollInPath, 
     getMyPaths, 
     completeNode,
+    updateProgress,
     createLearningPath,
     updateLearningPath,
     deleteLearningPath
@@ -18,6 +19,7 @@ router.get('/', authenticateToken, getAllPaths);
 router.get('/my', authenticateToken, getMyPaths);
 router.get('/:id', authenticateToken, checkSubscription, getPathById);
 router.post('/enroll', authenticateToken, checkSubscription, enrollInPath);
+router.put('/progress', authenticateToken, checkSubscription, updateProgress);
 router.post('/:id/nodes/:nodeId/complete', authenticateToken, checkSubscription, completeNode);
 
 // Admin Routes

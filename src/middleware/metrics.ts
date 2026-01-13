@@ -4,13 +4,15 @@ import client from 'prom-client';
 // Create a Registry which registers the metrics
 const register = new client.Registry();
 
-// Add a default label which is added to all metrics
-register.setDefaultLabels({
-  app: 'edufya-backend'
-});
+if (!process.env.VERCEL) {
+  // Add a default label which is added to all metrics
+  register.setDefaultLabels({
+    app: 'edufya-backend'
+  });
 
-// Enable the collection of default metrics
-client.collectDefaultMetrics({ register });
+  // Enable the collection of default metrics
+  client.collectDefaultMetrics({ register });
+}
 
 // Create a histogram for HTTP request latency
 const httpRequestDurationMicroseconds = new client.Histogram({

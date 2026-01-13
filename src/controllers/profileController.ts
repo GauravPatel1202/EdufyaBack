@@ -22,6 +22,7 @@ export const getProfile = async (req: Request, res: Response) => {
       skills: Array.from(user.skillProficiency?.keys() || []), // Convert map keys to array for frontend
       experience: user.experience || [],
       education: user.education || [],
+      projects: (user as any).projects || [],
       socialLinks: user.socialLinks || {},
       resumeUrl: user.resumeUrl || '',
       activityLog: user.activityLog || []
@@ -49,7 +50,7 @@ export const updateProfile = async (req: Request, res: Response) => {
     // Update basic text fields
     Object.keys(otherUpdates).forEach((key) => {
       // Allow updating top-level fields defined in schema
-      if (['firstName', 'lastName', 'title', 'bio', 'phoneNumber', 'location', 'resumeUrl', 'socialLinks', 'experience', 'education'].includes(key)) {
+      if (['firstName', 'lastName', 'title', 'bio', 'phoneNumber', 'location', 'resumeUrl', 'socialLinks', 'experience', 'education', 'projects'].includes(key)) {
         (user as any)[key] = otherUpdates[key];
       }
     });

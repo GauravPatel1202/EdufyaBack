@@ -14,6 +14,13 @@ export interface IUser extends Document {
   location?: string;
   experience?: any[];
   education?: any[];
+  projects?: {
+    title: string;
+    description: string;
+    link?: string;
+    technologies?: string[];
+    role?: string;
+  }[];
   socialLinks?: {
     linkedin?: string;
     github?: string;
@@ -77,8 +84,21 @@ const UserSchema: Schema = new Schema({
   bio: String,
   phoneNumber: String,
   location: String,
+  socialLinks: {
+    linkedin: String,
+    github: String,
+    twitter: String,
+    portfolio: String
+  },
   experience: [ExperienceSchema],
   education: [EducationSchema],
+  projects: [{
+    title: String,
+    description: String,
+    link: String,
+    technologies: [String],
+    role: String
+  }],
   resumeUrl: String,
   activityLog: [{
     date: { type: String, required: true },

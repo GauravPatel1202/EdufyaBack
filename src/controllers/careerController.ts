@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import JobRole from '../models/JobRole';
 import User from '../models/User';
+const pdfParse = require('pdf-parse');
+import mammoth from 'mammoth';
 export const getAllJobRoles = async (req: Request, res: Response) => {
   try {
     const roles = await JobRole.find().lean();
@@ -190,5 +192,113 @@ export const applyForJob = async (req: Request, res: Response) => {
     return res.json({ message: 'Application successful', applications: user.jobApplications });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
+  }
+};
+import * as aiService from '../services/aiService';
+
+export const startInterview = async (req: Request, res: Response) => {
+  try {
+    const { context } = req.body;
+    const initialHistory = [
+      {
+        role: "user",
+        parts: [{ text: `I want to start a mock interview for the role of ${context}. Please start by introducing yourself and asking the first question.` }]
+      }
+    ];
+
+    const response = await aiService.generateInterviewQuestion(context, initialHistory);
+    res.json({ message: response });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const chatInterview = async (req: Request, res: Response) => {
+  try {
+    const { context, history, message } = req.body;
+    
+    // Add user message to history
+    const updatedHistory = [
+      ...history,
+      {
+        role: "user",
+        parts: [{ text: message }]
+      }
+    ];
+
+    const response = await aiService.generateInterviewQuestion(context, updatedHistory);
+    res.json({ message: response });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const analyzeInterviewResult = async (req: Request, res: Response) => {
+  try {
+    const { context, history } = req.body;
+    const analysis = await aiService.analyzeInterview(context, history);
+    res.json(analysis);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getATSScore = async (req: Request, res: Response) => {
+  try {
+    const { resume, jobDescription } = req.body;
+    if (!resume || !jobDescription) {
+      return res.status(400).json({ message: 'Resume and Job Description are required' });
+    }
+    const analysis = await aiService.analyzeATS(resume, jobDescription);
+    res.json(analysis);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getATSScoreFromFile = async (req: Request, res: Response) => {
+  try {
+    const { jobDescription } = req.body;
+    const file = req.file;
+
+    console.log("ATS Check File Request Received");
+    console.log("File:", file ? { name: file.originalname, size: file.size, mimetype: file.mimetype } : "No file");
+    console.log("JD Length:", jobDescription ? jobDescription.length : "No JD");
+
+    if (!file || !jobDescription) {
+      return res.status(400).json({ message: 'File and Job Description are required' });
+    }
+
+    if (!file.buffer || file.buffer.length === 0) {
+      console.log("Error: Empty file buffer received");
+      return res.status(400).json({ message: 'The uploaded file is empty. Please check your request.' });
+    }
+
+    let resumeText = '';
+
+    if (file.mimetype === 'application/pdf') {
+      console.log("Processing PDF...");
+      const data = await pdfParse(file.buffer);
+      resumeText = data.text;
+    } else if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      console.log("Processing DOCX...");
+      const data = await mammoth.extractRawText({ buffer: file.buffer });
+      resumeText = data.value;
+    } else {
+      console.log("Unsupported mimetype:", file.mimetype);
+      return res.status(400).json({ message: 'Unsupported file format. Please upload PDF or DOCX.' });
+    }
+
+    console.log("Extracted text length:", resumeText.trim().length);
+
+    if (!resumeText.trim()) {
+      return res.status(400).json({ message: 'Could not extract text from the file.' });
+    }
+
+    const analysis = await aiService.analyzeATS(resumeText, jobDescription);
+    res.json(analysis);
+  } catch (error: any) {
+    console.error("ATS File Analysis Error:", error);
+    res.status(500).json({ message: error.message || 'Analysis failed' });
   }
 };

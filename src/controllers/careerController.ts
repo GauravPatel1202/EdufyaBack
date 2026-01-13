@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import JobRole from '../models/JobRole';
 import User from '../models/User';
-const pdfParse = require('pdf-parse');
+// pdf-parse is required dynamically inside the handler to prevent Vercel startup crashes
 import mammoth from 'mammoth';
 export const getAllJobRoles = async (req: Request, res: Response) => {
   try {
@@ -278,8 +278,15 @@ export const getATSScoreFromFile = async (req: Request, res: Response) => {
 
     if (file.mimetype === 'application/pdf') {
       console.log("Processing PDF...");
-      const data = await pdfParse(file.buffer);
-      resumeText = data.text;
+      try {
+        // Safer way to require specifically for serverless
+        const pdfParse = require('pdf-parse');
+        const data = await pdfParse(file.buffer);
+        resumeText = data.text;
+      } catch (pdfErr: any) {
+        console.error("PDF Parsing Library Error:", pdfErr);
+        throw new Error("PDF processing is currently unavailable in this environment. Please try DOCX format or paste text directly.");
+      }
     } else if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
       console.log("Processing DOCX...");
       const data = await mammoth.extractRawText({ buffer: file.buffer });

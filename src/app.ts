@@ -25,9 +25,9 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// In Vercel, we can't process.exit during module load as it breaks the function
 if (!MONGODB_URI) {
-  console.error('❌ MONGODB_URI is not defined in environment variables');
-  process.exit(1);
+  console.warn('⚠️ MONGODB_URI is not defined in environment variables');
 }
 
 // Security Headers
@@ -61,8 +61,10 @@ app.use(cors({
 
 app.use(express.json());
 
-// Metrics Middleware
-app.use(metricsMiddleware);
+// Metrics Middleware - Disable on Vercel to avoid system access issues
+if (!process.env.VERCEL) {
+  app.use(metricsMiddleware);
+}
 
 // Health check and root verification
 app.get('/', (req, res) => {
@@ -96,11 +98,17 @@ app.use(errorHandler);
 
 // Database connection
 console.log('Connecting to MongoDB...');
-mongoose.plugin(mongooseMetricsPlugin);
+if (!process.env.VERCEL) {
+  mongoose.plugin(mongooseMetricsPlugin);
+}
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(MONGODB_URI);
+    if (!MONGODB_URI) {
+      console.error('❌ MONGODB_URI is missing. Database connection skipped.');
+      return;
+    }
+    await mongoose.connect(MONGODB_URI as string);
     console.log('✅ Connected to MongoDB');
     
     // Only start the server if we're not on Vercel

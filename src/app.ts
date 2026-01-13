@@ -97,16 +97,27 @@ app.use(errorHandler);
 // Database connection
 console.log('Connecting to MongoDB...');
 mongoose.plugin(mongooseMetricsPlugin);
-mongoose.connect(MONGODB_URI)
-  .then(() => {
+
+const connectDB = async () => {
+  try {
+    await mongoose.connect(MONGODB_URI);
     console.log('✅ Connected to MongoDB');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
+    
+    // Only start the server if we're not on Vercel
+    if (!process.env.VERCEL) {
+      app.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+      });
+    }
+  } catch (err: any) {
     console.error('❌ MongoDB connection error:', err.message);
-    process.exit(1);
-  });
+    // In serverless, we don't want to process.exit(1) as it kills the instance
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+  }
+};
+
+connectDB();
 
 export default app;

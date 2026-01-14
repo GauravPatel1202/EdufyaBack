@@ -56,18 +56,20 @@ export const updateSettings = async (req: Request, res: Response) => {
     
     await settings.save();
 
-    // Log activity
-    await AdminActivity.create({
-      adminId,
-      action: 'update',
-      resource: 'settings',
-      details: {
-        description: 'Updated platform settings',
-        changes: updates
-      },
-      ipAddress: req.ip || 'unknown',
-      userAgent: req.get('user-agent')
-    });
+    // Log activity (only if adminId is available)
+    if (adminId) {
+      await AdminActivity.create({
+        adminId,
+        action: 'update',
+        resource: 'settings',
+        details: {
+          description: 'Updated platform settings',
+          changes: updates
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent')
+      });
+    }
 
     // Sanitize response
     const settingsObj = settings.toObject();
@@ -103,17 +105,19 @@ export const createBackup = async (req: Request, res: Response) => {
       settings: settings.toObject()
     };
 
-    // Log activity
-    await AdminActivity.create({
-      adminId: req.user?.id,
-      action: 'export',
-      resource: 'settings',
-      details: {
-        description: 'Created settings backup'
-      },
-      ipAddress: req.ip || 'unknown',
-      userAgent: req.get('user-agent')
-    });
+    // Log activity (only if adminId is available)
+    if (req.user?.id) {
+      await AdminActivity.create({
+        adminId: req.user.id,
+        action: 'export',
+        resource: 'settings',
+        details: {
+          description: 'Created settings backup'
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent')
+      });
+    }
 
     res.json(backup);
   } catch (error: any) {
@@ -144,17 +148,19 @@ export const restoreBackup = async (req: Request, res: Response) => {
       });
     }
 
-    // Log activity
-    await AdminActivity.create({
-      adminId: req.user?.id,
-      action: 'import',
-      resource: 'settings',
-      details: {
-        description: 'Restored settings from backup'
-      },
-      ipAddress: req.ip || 'unknown',
-      userAgent: req.get('user-agent')
-    });
+    // Log activity (only if adminId is available)
+    if (req.user?.id) {
+      await AdminActivity.create({
+        adminId: req.user.id,
+        action: 'import',
+        resource: 'settings',
+        details: {
+          description: 'Restored settings from backup'
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent')
+      });
+    }
 
     res.json({ message: 'Settings restored successfully' });
   } catch (error: any) {

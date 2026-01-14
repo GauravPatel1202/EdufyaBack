@@ -14,9 +14,12 @@ router.use(authMiddleware);
 // User Management
 router.get('/users', adminController.getAllUsers);
 router.put('/users/:userId/role', adminController.updateUserRole);
+router.delete('/users/:userId', adminController.deleteUser);
+router.put('/users/:userId/subscription', adminController.updateUserSubscription);
 router.delete('/users/bulk', adminController.bulkDeleteUsers);
 router.post('/users/export', adminController.exportUsers);
 router.post('/users/import', adminController.importUsers);
+
 
 // Learning Path Content Management
 router.put('/learning-paths/:pathId/nodes/:nodeId', adminController.updateNodeContent);

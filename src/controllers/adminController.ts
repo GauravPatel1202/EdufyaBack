@@ -29,6 +29,105 @@ export const updateUserRole = async (req: Request, res: Response) => {
   }
 };
 
+// Delete individual user
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Prevent deleting admin users (optional safety check)
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Cannot delete admin users' });
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    // Log activity (only if adminId is available)
+    if (req.user?.id) {
+      await AdminActivity.create({
+        adminId: req.user.id,
+        action: 'delete',
+        resource: 'user',
+        resourceId: userId,
+        details: {
+          description: `Deleted user: ${user.firstName} ${user.lastName} (${user.email})`,
+          metadata: { userId, userEmail: user.email, userRole: user.role }
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent')
+      });
+    }
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update user subscription status
+export const updateUserSubscription = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { status } = req.body;
+
+    if (!['active', 'inactive', 'cancelled', 'expired'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid subscription status' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Update subscription status
+    if (!user.subscription) {
+      user.subscription = {
+        status: status as 'active' | 'inactive',
+        startDate: new Date(),
+        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+      };
+    } else {
+      user.subscription.status = status as 'active' | 'inactive';
+      if (status === 'active' && !user.subscription.startDate) {
+        user.subscription.startDate = new Date();
+        user.subscription.expiryDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      }
+    }
+
+    await user.save();
+
+    // Log activity (only if adminId is available)
+    if (req.user?.id) {
+      await AdminActivity.create({
+        adminId: req.user.id,
+        action: 'update',
+        resource: 'user',
+        resourceId: userId,
+        details: {
+          description: `Updated subscription status for ${user.firstName} ${user.lastName} to ${status}`,
+          metadata: { userId, newStatus: status, previousStatus: user.subscription?.status }
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent')
+      });
+    }
+
+    res.json({ 
+      message: 'Subscription updated successfully', 
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        subscription: user.subscription
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 // Get activity logs
 export const getActivityLogs = async (req: Request, res: Response) => {
   try {
@@ -89,18 +188,20 @@ export const bulkDeleteUsers = async (req: Request, res: Response) => {
 
     const result = await User.deleteMany({ _id: { $in: userIds } });
 
-    // Log activity
-    await AdminActivity.create({
-      adminId: req.user?.id,
-      action: 'delete',
-      resource: 'user',
-      details: {
-        description: `Bulk deleted ${result.deletedCount} users`,
-        metadata: { userIds }
-      },
-      ipAddress: req.ip || 'unknown',
-      userAgent: req.get('user-agent')
-    });
+    // Log activity (only if adminId is available)
+    if (req.user?.id) {
+      await AdminActivity.create({
+        adminId: req.user.id,
+        action: 'delete',
+        resource: 'user',
+        details: {
+          description: `Bulk deleted ${result.deletedCount} users`,
+          metadata: { userIds }
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent')
+      });
+    }
 
     res.json({ message: `Successfully deleted ${result.deletedCount} users` });
   } catch (error: any) {
@@ -123,18 +224,20 @@ export const exportUsers = async (req: Request, res: Response) => {
 
     const users = await User.find(query).select('-password');
 
-    // Log activity
-    await AdminActivity.create({
-      adminId: req.user?.id,
-      action: 'export',
-      resource: 'user',
-      details: {
-        description: `Exported ${users.length} users`,
-        metadata: { filters: query }
-      },
-      ipAddress: req.ip || 'unknown',
-      userAgent: req.get('user-agent')
-    });
+    // Log activity (only if adminId is available)
+    if (req.user?.id) {
+      await AdminActivity.create({
+        adminId: req.user.id,
+        action: 'export',
+        resource: 'user',
+        details: {
+          description: `Exported ${users.length} users`,
+          metadata: { filters: query }
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent')
+      });
+    }
 
     res.json({ users, count: users.length });
   } catch (error: any) {
@@ -153,17 +256,19 @@ export const importUsers = async (req: Request, res: Response) => {
 
     const result = await User.insertMany(users, { ordered: false });
 
-    // Log activity
-    await AdminActivity.create({
-      adminId: req.user?.id,
-      action: 'import',
-      resource: 'user',
-      details: {
-        description: `Imported ${result.length} users`
-      },
-      ipAddress: req.ip || 'unknown',
-      userAgent: req.get('user-agent')
-    });
+    // Log activity (only if adminId is available)
+    if (req.user?.id) {
+      await AdminActivity.create({
+        adminId: req.user.id,
+        action: 'import',
+        resource: 'user',
+        details: {
+          description: `Imported ${result.length} users`
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent')
+      });
+    }
 
     res.status(201).json({ message: `Successfully imported ${result.length} users` });
   } catch (error: any) {

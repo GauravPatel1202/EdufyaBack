@@ -43,6 +43,9 @@ export interface INode {
       isCompleted?: boolean;
     }[]; // Production-ready checklist
     keyPoints?: string[]; // Important takeaways
+    pattern?: string; // Grouping pattern (e.g. "Arrays", "Two-Pointers")
+    difficulty?: 'easy' | 'medium' | 'hard'; // Overall node difficulty
+    problemUrl?: string; // Link to practice problem (LeetCode/GFG)
   };
   position: { x: number; y: number };
 }
@@ -107,7 +110,10 @@ const NodeSchema = new Schema({
       description: String,
       isCompleted: { type: Boolean, default: false }
     }], // Production-ready checklist
-    keyPoints: [String]
+    keyPoints: [String],
+    pattern: String,
+    difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
+    problemUrl: String
   },
   position: {
     x: { type: Number, default: 0 },
@@ -130,5 +136,8 @@ const LearningPathSchema: Schema = new Schema({
   nodes: [NodeSchema],
   edges: [EdgeSchema]
 }, { timestamps: true });
+
+LearningPathSchema.index({ title: 'text' });
+LearningPathSchema.index({ difficulty: 1 });
 
 export default mongoose.model<ILearningPath>('LearningPath', LearningPathSchema);

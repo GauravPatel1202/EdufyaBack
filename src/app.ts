@@ -11,6 +11,8 @@ import dashboardRoutes from './routes/dashboardRoutes';
 import subscriptionRoutes from './routes/subscriptionRoutes';
 import adminRoutes from './routes/adminRoutes';
 import { errorHandler } from './middleware/errorHandler';
+import helmet from 'helmet';
+import compression from 'compression';
 
 dotenv.config();
 
@@ -33,13 +35,18 @@ const PORT = process.env.PORT || 5001;
 const MONGODB_URI = process.env.MONGODB_URI;
 
 // CORS configuration - Simplified for debugging
-app.use(cors({
-  origin: true,
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || '*',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
-}));
+  optionsSuccessStatus: 200
+};
 
+// Performance & Security Middlewares (Standard for express on Vercel)
+app.use(helmet());
+app.use(compression());
+
+// Enable pre-flight for all routes
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Health check and root verification

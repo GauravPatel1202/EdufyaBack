@@ -153,6 +153,10 @@ export const updateProgress = async (req: Request, res: Response) => {
 // Admin Controllers
 export const createLearningPath = async (req: Request, res: Response) => {
   try {
+    // Sanitize body: remove _id if it's an empty string
+    if (req.body._id === '') {
+      delete req.body._id;
+    }
     const path = await LearningPath.create(req.body);
     res.status(201).json(path);
   } catch (error: any) {

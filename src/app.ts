@@ -50,6 +50,20 @@ app.set('etag', false);
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// DB Connection Import
+import connectDB from './config/db';
+
+// Database connection middleware for Serverless
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    res.status(500).json({ error: 'Database connection failed' });
+  }
+});
+
 // Health check and root verification
 app.get('/', (req, res) => {
   res.json({ 
@@ -81,26 +95,7 @@ app.use('/api/admin', adminRoutes);
 // Error Handling
 app.use(errorHandler);
 
-// Database connection
-const connectDB = async () => {
-  if (!MONGODB_URI) {
-    console.warn('⚠️ MONGODB_URI is not defined');
-    return;
-  }
 
-  try {
-    // Avoid re-connecting if already connected
-    if (mongoose.connection.readyState === 1) return;
-    
-    await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connected to MongoDB');
-  } catch (err: any) {
-    console.error('❌ MongoDB connection error:', err.message);
-  }
-};
-
-// Initiate connection but don't block
-connectDB();
 
 // Only start the server if we're not on Vercel
 if (!process.env.VERCEL) {

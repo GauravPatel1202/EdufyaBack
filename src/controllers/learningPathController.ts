@@ -164,6 +164,7 @@ export const createLearningPath = async (req: Request, res: Response) => {
   }
 };
 
+
 export const updateLearningPath = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

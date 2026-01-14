@@ -4,13 +4,13 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret',
+  key_id: process.env.RAZORPAY_KEY_ID || '',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
 });
 
 export const createRazorpayOrder = async (req: Request, res: Response) => {
   try {
-    const amount = 350 * 100; // Amount in paise (₹350)
+    const amount = 350 * 100; // Amount in paise (₹1 for testing)
     const options = {
       amount,
       currency: 'INR',
@@ -32,7 +32,7 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
 
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret')
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'uN3zySgdg6Eknv51UuEeHlqR')
       .update(sign.toString())
       .digest("hex");
 

@@ -2,8 +2,7 @@ import express from 'express';
 import { 
   createRazorpayOrder, 
   verifyRazorpayPayment, 
-  getSubscriptionStatus,
-  activateSubscription 
+  getSubscriptionStatus
 } from '../controllers/subscriptionController';
 import { authenticateToken } from '../middleware/auth';
 
@@ -12,6 +11,6 @@ const router = express.Router();
 router.get('/status', authenticateToken, getSubscriptionStatus);
 router.post('/create-order', authenticateToken, createRazorpayOrder);
 router.post('/verify-payment', authenticateToken, verifyRazorpayPayment);
-router.post('/activate', authenticateToken, activateSubscription); // Keeping for simulation if needed
+// REMOVED: /activate endpoint - subscriptions can only be activated through payment verification
 
 export default router;

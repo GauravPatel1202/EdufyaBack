@@ -6,7 +6,37 @@ import User from '../models/User';
 import mammoth from 'mammoth';
 export const getAllJobRoles = async (req: Request, res: Response) => {
   try {
-    const roles = await JobRole.find().lean();
+    const { location, type, marketDemand, industry, companySize, search, skills, jobFunction, company } = req.query;
+    const filter: any = {};
+
+    if (location) filter.location = { $regex: location as string, $options: 'i' };
+    if (type) filter.type = type;
+    if (marketDemand) filter.marketDemand = marketDemand;
+    if (industry) filter.industry = { $regex: industry as string, $options: 'i' };
+    if (companySize && companySize !== 'All') filter.companySize = companySize;
+    if (jobFunction) {
+      const funcArray = (jobFunction as string).split(',').map(s => s.trim());
+      if (funcArray.length > 0) {
+        filter.jobFunction = { $in: funcArray.map(s => new RegExp(s, 'i')) };
+      }
+    }
+    if (company) filter.company = { $regex: company as string, $options: 'i' };
+    
+    if (skills) {
+      const skillsArray = (skills as string).split(',').map(s => s.trim());
+      if (skillsArray.length > 0) {
+        filter['requiredSkills.name'] = { $in: skillsArray.map(s => new RegExp(s, 'i')) };
+      }
+    }
+
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search as string, $options: 'i' } },
+        { company: { $regex: search as string, $options: 'i' } }
+      ];
+    }
+
+    const roles = await JobRole.find(filter).lean();
     return res.json(roles);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -100,10 +130,15 @@ export const getCareerStats = async (req: Request, res: Response) => {
 export const createJobRole = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { title, company, description, requiredSkills, marketDemand, type, externalUrl } = req.body;
+    const { 
+      title, company, description, requiredSkills, marketDemand, type, externalUrl,
+      location, salary, responsibilities, requirements, benefits, aboutCompany,
+      experienceLevel, jobFunction, industry, companySize, foundedYear, status
+    } = req.body;
 
     const newJob = new JobRole({
       title,
+      status: status || 'Open',
       company,
       description,
       requiredSkills,
@@ -111,7 +146,9 @@ export const createJobRole = async (req: Request, res: Response) => {
       type,
       externalUrl,
       postedBy: userId,
-      applicants: []
+      applicants: [],
+      location, salary, responsibilities, requirements, benefits, aboutCompany,
+      experienceLevel, jobFunction, industry, companySize, foundedYear
     });
 
     await newJob.save();

@@ -30,6 +30,7 @@ router.get('/analytics/overview', analyticsController.getOverview);
 router.get('/analytics/users', analyticsController.getUserGrowth);
 router.get('/analytics/engagement', analyticsController.getEngagement);
 router.get('/analytics/revenue', analyticsController.getRevenue);
+router.get('/analytics/health', analyticsController.getHealth);
 router.get('/analytics/export', analyticsController.exportReport);
 
 // Platform Settings

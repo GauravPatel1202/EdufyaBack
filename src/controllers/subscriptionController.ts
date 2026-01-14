@@ -10,11 +10,16 @@ const razorpay = new Razorpay({
 
 export const createRazorpayOrder = async (req: Request, res: Response) => {
   try {
-    const amount = 350 * 100; // Amount in paise (₹1 for testing)
+    // Production amount: ₹350 (35000 paise)
+    const amount = 350 * 100; // Amount in paise
     const options = {
       amount,
       currency: 'INR',
       receipt: `receipt_${Date.now()}`,
+      notes: {
+        subscription_type: '1_year_premium',
+        description: 'Edufya Premium Subscription - 1 Year'
+      }
     };
 
     const order = await razorpay.orders.create(options);
@@ -30,9 +35,10 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     const userId = (req as any).user.userId;
 
+    // Verify payment signature
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || 'uN3zySgdg6Eknv51UuEeHlqR')
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || '')
       .update(sign.toString())
       .digest("hex");
 

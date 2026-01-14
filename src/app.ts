@@ -46,6 +46,7 @@ app.use(helmet());
 app.use(compression());
 
 // Enable pre-flight for all routes
+app.set('etag', false); 
 app.use(cors(corsOptions));
 app.use(express.json());
 

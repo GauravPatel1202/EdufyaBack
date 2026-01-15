@@ -4,17 +4,18 @@ import LearningPath from '../models/LearningPath';
 import Course from '../models/Course';
 import JobRole from '../models/JobRole';
 import UserLearningProgress from '../models/UserLearningProgress';
+import * as careerService from '../services/CareerService';
 
 export const getDashboardSummary = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
 
     const [user, allPaths, allCourses, allJobs, userProgress] = await Promise.all([
-      User.findById(userId).populate('targetRoleId'),
-      LearningPath.find().limit(3),
-      Course.find().limit(6),
-      JobRole.find().limit(5),
-      UserLearningProgress.find({ userId }).populate('learningPathId')
+      User.findById(userId).populate('targetRoleId').lean(),
+      LearningPath.find().limit(3).lean(),
+      Course.find().limit(6).lean(),
+      JobRole.find().limit(5).lean(),
+      UserLearningProgress.find({ userId }).populate('learningPathId').lean()
     ]);
 
     if (!user) {
@@ -32,49 +33,9 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
     const studyTime = user.studyTime || 12; // 12h default seed 
 
     // Prepare career stats
-    const targetRole = user.targetRoleId as any;
     let careerStats = null;
-    if (targetRole && targetRole.requiredSkills) {
-      const userProficiency = user.skillProficiency || new Map();
-      const skillGaps = targetRole.requiredSkills.map((reqSkill: any) => {
-        let currentLevel = 0;
-        if (userProficiency instanceof Map) {
-          currentLevel = userProficiency.get(reqSkill.name) || 0;
-        } else if (userProficiency) {
-          currentLevel = (userProficiency as any)[reqSkill.name] || 0;
-        }
-        
-        return {
-          name: reqSkill.name,
-          requiredLevel: reqSkill.level,
-          currentLevel,
-          gap: Math.max(0, reqSkill.level - currentLevel)
-        };
-      });
-
-      const totalRequired = targetRole.requiredSkills.reduce((sum: number, s: any) => sum + (s.level || 0), 0);
-      const totalCurrent = targetRole.requiredSkills.reduce((sum: number, s: any) => {
-        let currentLevel = 0;
-        if (userProficiency instanceof Map) {
-          currentLevel = userProficiency.get(s.name) || 0;
-        } else if (userProficiency) {
-          currentLevel = (userProficiency as any)[s.name] || 0;
-        }
-        return sum + Math.min(s.level || 0, currentLevel);
-      }, 0);
-
-      const readinessScore = totalRequired > 0 ? Math.round((totalCurrent / totalRequired) * 100) : 0;
-      
-      careerStats = {
-        targetRole: targetRole.title,
-        readinessScore,
-        skillGaps,
-        marketDemand: targetRole.marketDemand,
-        recommendations: skillGaps.filter((g: any) => g.gap > 0).slice(0, 3).map((g: any) => ({
-            id: `rec-${g.name}`,
-            title: `Master ${g.name} with our targeted learning path`
-        }))
-      };
+    if (user.targetRoleId) {
+      careerStats = careerService.analyzeSkillGaps(user, user.targetRoleId);
     }
 
     // Skill Verification Data

@@ -3,8 +3,10 @@ import mongoose from 'mongoose';
 import JobRole from '../models/JobRole';
 import User from '../models/User';
 import PlatformSettings from '../models/PlatformSettings';
-// pdf-parse is required dynamically inside the handler to prevent Vercel startup crashes
+import InterviewSession from '../models/InterviewSession';
 import mammoth from 'mammoth';
+import * as careerService from '../services/CareerService';
+import { extractTextFromBuffer } from '../utils/DocumentUtils';
 export const getAllJobRoles = async (req: Request, res: Response) => {
   try {
     const { location, type, marketDemand, industry, companySize, search, skills, jobFunction, company } = req.query;
@@ -72,57 +74,12 @@ export const setTargetRole = async (req: Request, res: Response) => {
 export const getCareerStats = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const user = await User.findById(userId).populate('targetRoleId').lean() as any;
-    const targetRole = user?.targetRoleId;
-    if (!targetRole) return res.json({ readinessScore: 0, skillGaps: [], message: 'No target role set' });
-
-    // Calculate skill gaps
-    const userProficiency = user.skillProficiency || new Map();
-    const skillGaps = targetRole.requiredSkills.map((reqSkill: any) => {
-      const currentLevel = userProficiency instanceof Map 
-        ? (userProficiency.get(reqSkill.name) || 0)
-        : (userProficiency[reqSkill.name] || 0);
-      
-      return {
-        name: reqSkill.name,
-        requiredLevel: reqSkill.level,
-        currentLevel,
-        gap: Math.max(0, reqSkill.level - currentLevel)
-      };
-    });
-
-    const totalRequired = targetRole.requiredSkills.reduce((sum: number, s: any) => sum + s.level, 0);
-    const totalCurrent = targetRole.requiredSkills.reduce((sum: number, s: any) => {
-      const currentLevel = userProficiency instanceof Map 
-        ? (userProficiency.get(s.name) || 0)
-        : (userProficiency[s.name] || 0);
-      return sum + Math.min(s.level, currentLevel);
-    }, 0);
-
-    const readinessScore = Math.round((totalCurrent / totalRequired) * 100);
-
-    // Dynamic job recommendations (simplified logic)
-    const recommendations = skillGaps
-      .filter((gap: any) => gap.gap > 0)
-      .slice(0, 3)
-      .map((gap: any) => ({ 
-        id: `rec-${gap.name}`, 
-        title: `Master ${gap.name} with our targeted learning path`, 
-        location: 'Online', 
-        salary: 'Career Growth' 
-      }));
-
-    if (recommendations.length === 0) {
-        recommendations.push({ id: 'top', title: 'You are ready for this role! Explore advanced specializations.', location: 'Global', salary: 'Top Tier' });
-    }
-
-    return res.json({
-      targetRole: targetRole.title,
-      readinessScore,
-      skillGaps,
-      recommendations,
-      marketDemand: targetRole.marketDemand
-    });
+    const user = await User.findById(userId).populate('targetRoleId').lean();
+    
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    const analysis = careerService.analyzeSkillGaps(user, user.targetRoleId);
+    return res.json(analysis);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -253,6 +210,8 @@ import * as aiService from '../services/aiService';
 export const startInterview = async (req: Request, res: Response) => {
   try {
     const { context } = req.body;
+    const userId = (req as any).user.userId;
+
     const initialHistory = [
       {
         role: "user",
@@ -261,7 +220,19 @@ export const startInterview = async (req: Request, res: Response) => {
     ];
 
     const response = await aiService.generateInterviewQuestion(context, initialHistory);
-    res.json({ message: response });
+    
+    // Create new session in DB
+    const session = new InterviewSession({
+      userId,
+      context,
+      history: [
+        ...initialHistory,
+        { role: 'model', parts: [{ text: response }] }
+      ]
+    });
+    await session.save();
+
+    res.json({ message: response, sessionId: session._id });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -269,18 +240,32 @@ export const startInterview = async (req: Request, res: Response) => {
 
 export const chatInterview = async (req: Request, res: Response) => {
   try {
-    const { context, history, message } = req.body;
+    const { message, sessionId } = req.body;
     
-    // Add user message to history
-    const updatedHistory = [
-      ...history,
-      {
-        role: "user",
-        parts: [{ text: message }]
-      }
-    ];
+    const session = await InterviewSession.findById(sessionId);
+    if (!session || session.status === 'completed') {
+      return res.status(404).json({ message: 'Active interview session not found' });
+    }
 
-    const response = await aiService.generateInterviewQuestion(context, updatedHistory);
+    // Add user message to history
+    session.history.push({
+      role: "user",
+      parts: [{ text: message }]
+    });
+
+    const response = await aiService.generateInterviewQuestion(session.context, session.history);
+    
+    // Add model response to history
+    session.history.push({
+      role: "model",
+      parts: [{ text: response }]
+    });
+
+    if (response.includes("INTERVIEW_COMPLETE")) {
+      session.status = 'completed';
+    }
+
+    await session.save();
     res.json({ message: response });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -289,8 +274,17 @@ export const chatInterview = async (req: Request, res: Response) => {
 
 export const analyzeInterviewResult = async (req: Request, res: Response) => {
   try {
-    const { context, history } = req.body;
-    const analysis = await aiService.analyzeInterview(context, history);
+    const { sessionId } = req.body;
+    const session = await InterviewSession.findById(sessionId);
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+
+    const analysis = await aiService.analyzeInterview(session.context, session.history);
+    
+    session.score = analysis.score;
+    session.feedback = analysis;
+    session.status = 'completed';
+    await session.save();
+
     res.json(analysis);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -315,42 +309,11 @@ export const getATSScoreFromFile = async (req: Request, res: Response) => {
     const { jobDescription } = req.body;
     const file = req.file;
 
-    console.log("ATS Check File Request Received");
-    console.log("File:", file ? { name: file.originalname, size: file.size, mimetype: file.mimetype } : "No file");
-    console.log("JD Length:", jobDescription ? jobDescription.length : "No JD");
-
     if (!file || !jobDescription) {
       return res.status(400).json({ message: 'File and Job Description are required' });
     }
 
-    if (!file.buffer || file.buffer.length === 0) {
-      console.log("Error: Empty file buffer received");
-      return res.status(400).json({ message: 'The uploaded file is empty. Please check your request.' });
-    }
-
-    let resumeText = '';
-
-    if (file.mimetype === 'application/pdf') {
-      console.log("Processing PDF...");
-      try {
-        // Safer way to require specifically for serverless
-        const pdfParse = require('pdf-parse');
-        const data = await pdfParse(file.buffer);
-        resumeText = data.text;
-      } catch (pdfErr: any) {
-        console.error("PDF Parsing Library Error:", pdfErr);
-        throw new Error("PDF processing is currently unavailable in this environment. Please try DOCX format or paste text directly.");
-      }
-    } else if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      console.log("Processing DOCX...");
-      const data = await mammoth.extractRawText({ buffer: file.buffer });
-      resumeText = data.value;
-    } else {
-      console.log("Unsupported mimetype:", file.mimetype);
-      return res.status(400).json({ message: 'Unsupported file format. Please upload PDF or DOCX.' });
-    }
-
-    console.log("Extracted text length:", resumeText.trim().length);
+    const resumeText = await extractTextFromBuffer(file.buffer, file.mimetype);
 
     if (!resumeText.trim()) {
       return res.status(400).json({ message: 'Could not extract text from the file.' });

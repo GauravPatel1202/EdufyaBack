@@ -64,8 +64,9 @@ router.post('/jobs/bulk-import/:id/retry', adminController.reScrapeItem);
 
 // Roadmap Import
 // Roadmap Import
-import { importRoadmap, bulkImportRoadmaps } from '../controllers/roadmapController';
+import { importRoadmap, bulkImportRoadmaps, generateAIRoadmap } from '../controllers/roadmapController';
 router.post('/learning-paths/import/roadmap', authMiddleware, requireAdmin, importRoadmap);
 router.post('/learning-paths/import/all', authMiddleware, requireAdmin, bulkImportRoadmaps);
+router.post('/learning-paths/generate/ai', authMiddleware, requireAdmin, generateAIRoadmap);
 
 export default router;

@@ -32,6 +32,8 @@ const createHR = async () => {
       console.log(`New HR user created: ${hr.email}`);
     }
 
+
+    
     await mongoose.disconnect();
   } catch (error) {
     console.error('Error:', error);

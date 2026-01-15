@@ -59,9 +59,13 @@ export interface IEdge {
 export interface ILearningPath extends Document {
   title: string;
   description: string;
+  category: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   estimatedDuration: number;
   tags: string[];
+  status: 'pending' | 'published' | 'rejected';
+  rejectionReason?: string;
+  createdBy: mongoose.Types.ObjectId;
   nodes: INode[];
   edges: IEdge[];
   createdAt: Date;
@@ -130,9 +134,18 @@ const EdgeSchema = new Schema({
 const LearningPathSchema: Schema = new Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
+  category: { type: String, default: 'Role Based' }, // Grouping: Role Based, Skill Based, Projects, Best Practices
+  metadata: { type: Schema.Types.Mixed }, // Store extra info like tags, original ID, etc.
   difficulty: { type: String, enum: ['beginner', 'intermediate', 'advanced'], default: 'beginner' },
   estimatedDuration: { type: Number, default: 0 }, // in hours
   tags: [String],
+  status: { 
+    type: String, 
+    enum: ['pending', 'published', 'rejected'], 
+    default: 'pending' 
+  },
+  rejectionReason: String,
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   nodes: [NodeSchema],
   edges: [EdgeSchema]
 }, { timestamps: true });

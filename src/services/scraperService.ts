@@ -298,6 +298,79 @@ export const scraperService = {
     };
   },
 
+  scrapeRoadmap: async (url: string) => {
+    let html = '';
+    try {
+      console.log(`🔍 Scraper accessing: ${url}`);
+      const response = await fetch(url, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+      
+      if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+      html = await response.text();
+
+      // Use AI to parse the structure
+      const { GoogleGenerativeAI } = require("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      
+      const prompt = `
+        You are a Learning Path Extractor. I will provide HTML content from a roadmap/learning website.
+        Extract a structured learning path JSON.
+        
+        HTML Content (truncated):
+        ${html.substring(0, 20000)}... [truncated]
+
+        Rules:
+        1. Identify the Main Title of the roadmap.
+        2. Extract a list of "Nodes" (Topics). For each node:
+           - "label": Short title (e.g., "HTML", "React")
+           - "description": A professional summary of why this is important.
+           - "resources": Find ANY links, articles, or videos mentioned near this topic in the HTML.
+           - "type": "topic" (default)
+        3. Return STRICT JSON format:
+        {
+          "title": "...",
+          "description": "...",
+          "nodes": [ { "id": "1", "data": { "label": "...", "description": "...", "resources": [] }, "position": { "x": 0, "y": 0 } } ],
+          "edges": []
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const jsonStr = text.replace(/```json|```/g, '').trim();
+      
+      return JSON.parse(jsonStr);
+
+    } catch (error: any) {
+      console.warn('AI Roadmap Scrape Failed, falling back to Regex:', error.message);
+      
+      // Fallback: Regex extraction
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      const title = titleMatch ? titleMatch[1].split('|')[0].trim() : 'Imported Roadmap';
+      
+      return {
+        title,
+        description: `Roadmap imported from ${url}`,
+        nodes: [
+            {
+                id: '1',
+                type: 'topic',
+                data: {
+                    label: title.replace(' Roadmap', ''),
+                    description: 'Main topic extracted from page.'
+                },
+                position: { x: 0, y: 0 }
+            }
+        ],
+        edges: []
+      };
+    }
+  },
+
   /**
    * Retry failed items
    */

@@ -3,7 +3,7 @@ import * as adminController from '../controllers/adminController';
 import * as analyticsController from '../controllers/analyticsController';
 import * as settingsController from '../controllers/settingsController';
 import * as contentLibraryController from '../controllers/contentLibraryController';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, isAdmin as requireAdmin } from '../middleware/auth';
 
 
 const router = express.Router();
@@ -61,5 +61,11 @@ router.get('/jobs/bulk-import/status', adminController.getImportQueueStatus);
 router.post('/jobs/bulk-import/run', adminController.runScraper);
 router.post('/jobs/bulk-import/retry', adminController.retryFailedImports);
 router.post('/jobs/bulk-import/:id/retry', adminController.reScrapeItem);
+
+// Roadmap Import
+// Roadmap Import
+import { importRoadmap, bulkImportRoadmaps } from '../controllers/roadmapController';
+router.post('/learning-paths/import/roadmap', authMiddleware, requireAdmin, importRoadmap);
+router.post('/learning-paths/import/all', authMiddleware, requireAdmin, bulkImportRoadmaps);
 
 export default router;

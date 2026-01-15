@@ -11,7 +11,7 @@ import dashboardRoutes from './routes/dashboardRoutes';
 import subscriptionRoutes from './routes/subscriptionRoutes';
 import adminRoutes from './routes/adminRoutes';
 import { errorHandler } from './middleware/errorHandler';
-import helmet from 'helmet';
+// import helmet from 'helmet';
 import compression from 'compression';
 
 dotenv.config();
@@ -32,7 +32,6 @@ if (typeof (global as any).CanvasRenderingContext2D === 'undefined') {
 
 const app = express();
 const PORT = process.env.PORT || 5001;
-const MONGODB_URI = process.env.MONGODB_URI;
 
 // CORS configuration - Simplified for debugging
 const corsOptions = {
@@ -41,8 +40,14 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
-// Performance & Security Middlewares (Standard for express on Vercel)
-app.use(helmet());
+// Request Logger
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
+// Performance & Security Middlewares
+// app.use(helmet());
 app.use(compression());
 
 // Enable pre-flight for all routes
@@ -53,22 +58,10 @@ app.use(express.json());
 // DB Connection Import
 import connectDB from './config/db';
 
-// Database connection middleware for Serverless
-app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-    next();
-  } catch (error) {
-    console.error('Database connection failed:', error);
-    res.status(500).json({ error: 'Database connection failed' });
-  }
-});
-
-// Health check and root verification
 app.get('/', (req, res) => {
   res.json({ 
     status: 'healthy', 
-    message: 'Welcome to Edufya AI API (Simplified for Debugging)',
+    message: 'Welcome to Edufya AI API',
     version: '1.0.1',
     env: process.env.VERCEL ? 'vercel' : 'local'
   });
@@ -80,6 +73,19 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
+});
+
+// Database connection middleware (Lazy connect for requests)
+// For local we connect at startup, but this safety net helps
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+     try {
+       await connectDB();
+     } catch(e) {
+       console.error("DB Connect Middleware Error:", e);
+     }
+  }
+  next();
 });
 
 // Routes
@@ -95,13 +101,27 @@ app.use('/api/admin', adminRoutes);
 // Error Handling
 app.use(errorHandler);
 
-
-
 // Only start the server if we're not on Vercel
 if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+  console.log('Starting in LOCAL mode...');
+  
+  // Connect to DB first to keep process alive and ensure readiness
+  connectDB().then(() => {
+      console.log('✅ Local DB Connected');
+      const server = app.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+      });
+      
+      // Handle server errors
+      server.on('error', (err) => {
+          console.error('SERVER ERROR:', err);
+      });
+
+  }).catch(err => {
+      console.error('❌ Failed to connect to DB locally:', err);
   });
+} else {
+    console.log('Starting in SERVERLESS (Vercel) mode...');
 }
 
 export default app;

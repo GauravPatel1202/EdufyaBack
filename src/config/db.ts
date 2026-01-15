@@ -2,10 +2,6 @@ import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable');
-}
-
 // Global cached connection for serverless environments
 let cached = (global as any).mongoose;
 
@@ -14,16 +10,22 @@ if (!cached) {
 }
 
 async function connectDB() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error('Please define the MONGODB_URI environment variable');
+  }
+
   if (cached.conn) {
     return cached.conn;
   }
 
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false, // Critical for serverless to fail fast if no connection
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000, // 5s timeout
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(uri, opts).then((mongoose) => {
       console.log('✅ New MongoDB Connection Established');
       return mongoose;
     });

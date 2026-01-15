@@ -2,12 +2,13 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import JobRole from '../models/JobRole';
 import User from '../models/User';
+import PlatformSettings from '../models/PlatformSettings';
 // pdf-parse is required dynamically inside the handler to prevent Vercel startup crashes
 import mammoth from 'mammoth';
 export const getAllJobRoles = async (req: Request, res: Response) => {
   try {
     const { location, type, marketDemand, industry, companySize, search, skills, jobFunction, company } = req.query;
-    const filter: any = {};
+    const filter: any = { status: 'Open' };
 
     if (location) filter.location = { $regex: location as string, $options: 'i' };
     if (type) filter.type = type;
@@ -133,12 +134,27 @@ export const createJobRole = async (req: Request, res: Response) => {
     const { 
       title, company, description, requiredSkills, marketDemand, type, externalUrl,
       location, salary, responsibilities, requirements, benefits, aboutCompany,
-      experienceLevel, jobFunction, industry, companySize, foundedYear, status
+
+      experienceLevel, jobFunction, industry, companySize, foundedYear,
+      techStack, officePhotos
     } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    let initialStatus = 'Pending';
+    if (user.role === 'admin') {
+      initialStatus = 'Open';
+    } else {
+      const settings = await PlatformSettings.findOne();
+      if (settings?.jobBoardSettings?.autoApproveJobs) {
+        initialStatus = 'Open';
+      }
+    }
 
     const newJob = new JobRole({
       title,
-      status: status || 'Open',
+      status: initialStatus,
       company,
       description,
       requiredSkills,
@@ -148,7 +164,8 @@ export const createJobRole = async (req: Request, res: Response) => {
       postedBy: userId,
       applicants: [],
       location, salary, responsibilities, requirements, benefits, aboutCompany,
-      experienceLevel, jobFunction, industry, companySize, foundedYear
+      experienceLevel, jobFunction, industry, companySize, foundedYear,
+      techStack, officePhotos
     });
 
     await newJob.save();
@@ -344,5 +361,44 @@ export const getATSScoreFromFile = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("ATS File Analysis Error:", error);
     res.status(500).json({ message: error.message || 'Analysis failed' });
+  }
+};
+
+
+export const extractJobFromUrl = async (req: Request, res: Response) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ message: 'URL is required' });
+
+    // 1. Fetch content (simple implementation)
+    // Note: Production-ready scrapers need headers/proxies to avoid blocking
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    
+    if (!response.ok) {
+        return res.status(400).json({ message: `Failed to fetch URL: ${response.statusText}` });
+    }
+
+    const html = await response.text();
+    console.log("Fetched HTML Length:", html.length);
+
+    // 2. AI Extraction
+    const jobData = await aiService.extractJobDetails(html);
+
+    if (jobData.error) {
+        console.error("AI Extraction Logic Failed:", jobData.error);
+        return res.status(500).json({ message: 'Failed to extract job details via AI' });
+    }
+
+    // Add source URL
+    jobData.externalUrl = url;
+    
+    res.json(jobData);
+  } catch (error: any) {
+    console.error("Extraction Controller Error:", error);
+    res.status(500).json({ message: error.message });
   }
 };

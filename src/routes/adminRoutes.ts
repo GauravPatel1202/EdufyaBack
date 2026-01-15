@@ -28,6 +28,11 @@ router.put('/learning-paths/:pathId/nodes/bulk', adminController.bulkUpdateNodes
 // Activity Logs
 router.get('/activity-logs', adminController.getActivityLogs);
 
+// Job Management
+router.get('/jobs', adminController.getAdminJobs);
+router.put('/jobs/settings', adminController.updateJobBoardSettings);
+router.put('/jobs/:id/status', adminController.updateJobStatus);
+
 // Analytics
 router.get('/analytics/overview', analyticsController.getOverview);
 router.get('/analytics/users', analyticsController.getUserGrowth);
@@ -49,5 +54,12 @@ router.put('/content/:id', contentLibraryController.updateContent);
 router.delete('/content/:id', contentLibraryController.deleteContent);
 router.post('/content/bulk-upload', contentLibraryController.bulkUpload);
 router.get('/content/stats', contentLibraryController.getContentStats);
+
+// Bulk Job Import Routes
+router.post('/jobs/bulk-import', adminController.bulkImportJobs);
+router.get('/jobs/bulk-import/status', adminController.getImportQueueStatus);
+router.post('/jobs/bulk-import/run', adminController.runScraper);
+router.post('/jobs/bulk-import/retry', adminController.retryFailedImports);
+router.post('/jobs/bulk-import/:id/retry', adminController.reScrapeItem);
 
 export default router;

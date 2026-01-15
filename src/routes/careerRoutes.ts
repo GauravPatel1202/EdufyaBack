@@ -23,6 +23,7 @@ router.post('/interview/analyze', authMiddleware, careerController.analyzeInterv
 router.post('/ats-score', authMiddleware, careerController.getATSScore);
 router.post('/ats-score-file', authMiddleware, upload.single('resume'), careerController.getATSScoreFromFile);
 
+router.post('/extract-job', authMiddleware, careerController.extractJobFromUrl);
 router.post('/apply', authMiddleware, careerController.applyForJob);
 
 export default router;

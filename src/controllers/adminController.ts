@@ -1,3 +1,4 @@
+import { scraperService } from '../services/scraperService';
 import { Request, Response } from 'express';
 import User from '../models/User';
 import AdminActivity from '../models/AdminActivity';
@@ -16,7 +17,7 @@ export const updateUserRole = async (req: Request, res: Response) => {
     const { userId } = req.params;
     const { role } = req.body;
 
-    if (!['student', 'admin', 'HR'].includes(role)) {
+    if (!['student', 'admin', 'HR', 'suspended'].includes(role)) {
        return res.status(400).json({ message: 'Invalid role' });
     }
 
@@ -324,4 +325,144 @@ export const bulkUpdateNodes = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
+};
+
+// Job Role Management
+import JobRole from '../models/JobRole';
+import PlatformSettings from '../models/PlatformSettings';
+
+export const getAdminJobs = async (req: Request, res: Response) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+    const filter: any = {};
+    if (status && status !== 'All') filter.status = status;
+
+    // RESTRICT HR TO OWN JOBS
+    const user = (req as any).user;
+    if (user && user.role === 'HR') {
+        filter.postedBy = user.userId;
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+    
+    const [jobs, total] = await Promise.all([
+      JobRole.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .populate('postedBy', 'firstName lastName email'),
+      JobRole.countDocuments(filter)
+    ]);
+
+    // Also fetch settings to return current auto-approve state
+    const settings = await PlatformSettings.findOne();
+
+    res.json({
+      jobs,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit))
+      },
+      settings: {
+        autoApproveJobs: settings?.jobBoardSettings?.autoApproveJobs || false
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateJobStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['Open', 'Closed', 'Draft', 'Pending'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const job = await JobRole.findByIdAndUpdate(id, { status }, { new: true });
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    res.json(job);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateJobBoardSettings = async (req: Request, res: Response) => {
+  try {
+    const { autoApproveJobs } = req.body;
+    
+    let settings = await PlatformSettings.findOne();
+    if (!settings) {
+      settings = new PlatformSettings({ jobBoardSettings: { autoApproveJobs } });
+    } else {
+      if (!settings.jobBoardSettings) settings.jobBoardSettings = { autoApproveJobs: false };
+      settings.jobBoardSettings.autoApproveJobs = autoApproveJobs;
+    }
+    
+    await settings.save();
+    res.json(settings);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const bulkImportJobs = async (req: Request, res: Response) => {
+  try {
+    const { urls, useAI = true } = req.body;
+    const userId = (req as any).user.userId;
+    
+    if (!urls || !Array.isArray(urls)) {
+      return res.status(400).json({ message: 'URLs array is required' });
+    }
+
+    // Filter out empty strings
+    const validUrls = urls.filter(u => u && u.trim().length > 0);
+
+    const result = await scraperService.addToQueue(validUrls, userId, useAI);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getImportQueueStatus = async (req: Request, res: Response) => {
+  try {
+    const status = await scraperService.getQueueStatus();
+    res.json(status);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const runScraper = async (req: Request, res: Response) => {
+  try {
+    const result = await scraperService.processQueue();
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const retryFailedImports = async (req: Request, res: Response) => {
+    try {
+        const result = await scraperService.retryFailed();
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to retry imports" });
+    }
+};
+
+export const reScrapeItem = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await scraperService.reScrapeItem(id);
+        res.json({ message: "Item queued for re-scraping" });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to re-scrape item" });
+    }
 };

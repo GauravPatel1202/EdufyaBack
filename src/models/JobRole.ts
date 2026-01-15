@@ -22,9 +22,11 @@ export interface IJobRole extends Document {
   foundedYear?: number;
   requiredSkills: IRequiredSkill[];
   marketDemand: 'High' | 'Medium' | 'Low';
-  status: 'Open' | 'Closed' | 'Draft';
-  type: 'internal' | 'external';
+  status: 'Open' | 'Closed' | 'Draft' | 'Pending';
+  type: 'internal' | 'external' | 'project';
   externalUrl?: string;
+  techStack?: string[];
+  officePhotos?: string[];
   postedBy?: mongoose.Types.ObjectId;
   applicants: {
     userId: mongoose.Types.ObjectId;
@@ -54,9 +56,11 @@ const JobRoleSchema: Schema = new Schema({
     level: { type: Number, required: true, min: 0, max: 100 }
   }],
   marketDemand: { type: String, enum: ['High', 'Medium', 'Low'], default: 'Medium' },
-  status: { type: String, enum: ['Open', 'Closed', 'Draft'], default: 'Open' },
-  type: { type: String, enum: ['internal', 'external'], default: 'internal' },
+  status: { type: String, enum: ['Open', 'Closed', 'Draft', 'Pending'], default: 'Open' },
+  type: { type: String, enum: ['internal', 'external', 'project'], default: 'internal' },
   externalUrl: { type: String },
+  techStack: [{ type: String }],
+  officePhotos: [{ type: String }],
   postedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   applicants: [{
     userId: { type: Schema.Types.ObjectId, ref: 'User' },

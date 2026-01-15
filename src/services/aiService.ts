@@ -92,3 +92,40 @@ export const analyzeATS = async (resume: string, jobDescription: string) => {
     throw new Error("Failed to perform ATS analysis");
   }
 };
+
+export const extractJobDetails = async (content: string) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `You are an expert recruitment assistant. Extract structured job details from the following text/HTML.
+    
+    Content:
+    ${content.substring(0, 30000)}
+
+    Return a JSON object with these fields (use reasonable defaults if missing):
+    - title: (string)
+    - company: (string)
+    - location: (string, default "Remote")
+    - salary: (string, default "Competitive")
+    - type: (string, enum: "internal", "external")
+    - description: (string, summary ~300 words)
+    - requirements: (array of strings)
+    - responsibilities: (array of strings)
+    - benefits: (array of strings)
+    - techStack: (array of strings, e.g. ["React", "Node.js", "AWS"])
+    - requiredSkills: (array of objects {name: string, level: number 1-100})
+    - experienceLevel: (string)
+
+    Return ONLY raw JSON.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : { error: "Failed to parse job details" };
+  } catch (error) {
+    console.error("Gemini Extraction Error:", error);
+    return { error: `Failed to extract job details: ${(error as any).message}` };
+  }
+};

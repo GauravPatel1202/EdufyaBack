@@ -28,6 +28,9 @@ export interface IPlatformSettings extends Document {
     maintenanceMode: boolean;
     allowRegistration: boolean;
   };
+  jobBoardSettings: {
+    autoApproveJobs: boolean;
+  };
   seoSettings: {
     metaTitle: string;
     metaDescription: string;
@@ -86,6 +89,9 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>({
     enableJobBoard: { type: Boolean, default: true },
     maintenanceMode: { type: Boolean, default: false },
     allowRegistration: { type: Boolean, default: true }
+  },
+  jobBoardSettings: {
+    autoApproveJobs: { type: Boolean, default: false }
   },
   seoSettings: {
     metaTitle: { type: String, default: 'Edufya - Learn, Grow, Succeed' },

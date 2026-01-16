@@ -25,6 +25,7 @@ const corsOptions = {
   credentials: true,
   optionsSuccessStatus: 200
 };
+
 app.set('etag', false); 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));

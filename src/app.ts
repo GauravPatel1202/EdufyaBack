@@ -26,8 +26,8 @@ const corsOptions = {
   origin: process.env.ALLOW_ALL === 'true'
     ? true
     : isProd 
-      ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
-      : ['http://localhost:3000', 'http://localhost:3001','https://edufya.com/','www.edufya.com'],
+      ? (process.env.ALLOWED_ORIGINS ? [...process.env.ALLOWED_ORIGINS.split(','), 'https://edufya.com', 'https://www.edufya.com'] : ['https://edufya.com', 'https://www.edufya.com'])
+      : ['http://localhost:3000', 'http://localhost:3001', 'https://edufya.com', 'https://www.edufya.com'],
   credentials: true,
   optionsSuccessStatus: 200
 };

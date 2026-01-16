@@ -21,7 +21,7 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 // CORS configuration - Must be FIRST
 const corsOptions = {
-  origin: "*", // Allow all origins (dynamically reflects request origin)
+  origin: true, // Allow all origins (dynamically reflects request origin)
   credentials: true,
   optionsSuccessStatus: 200
 };

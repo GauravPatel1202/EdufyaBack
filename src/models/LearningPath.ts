@@ -152,5 +152,8 @@ const LearningPathSchema: Schema = new Schema({
 
 LearningPathSchema.index({ title: 'text' });
 LearningPathSchema.index({ difficulty: 1 });
+LearningPathSchema.index({ category: 1 });
+LearningPathSchema.index({ status: 1 });
+LearningPathSchema.index({ createdBy: 1 });
 
 export default mongoose.model<ILearningPath>('LearningPath', LearningPathSchema);

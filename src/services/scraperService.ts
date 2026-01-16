@@ -382,6 +382,54 @@ export const scraperService = {
       return { message: "Failed items reset to Pending" };
   },
 
+  /**
+   * Suggest a roadmap structure using Gemini AI
+   */
+  suggestRoadmapNodes: async (topic: string) => {
+    try {
+      const { GoogleGenerativeAI } = require("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      
+      const prompt = `
+        You are a curriculum architect for Edufya AI.
+        Generate a comprehensive, structural learning roadmap for the topic: "${topic}".
+        
+        Rules:
+        1. Break the topic into logical, sequential nodes (modules).
+        2. Assign each node a type: 'root', 'concept', 'code', 'practice', 'quiz', 'milestone', or 'project'.
+        3. Create edges (connections) that show the learning flow.
+        4. For each node, include:
+           - label: Short, clear title.
+           - description: A concise summary of what will be learned.
+           - difficulty: 'easy', 'medium', or 'hard'.
+           - estimatedTime: Integer minutes.
+        5. Arrange nodes in a hierarchical grid (x, y positions).
+        
+        Return STRICT JSON format:
+        {
+          "title": "${topic} Mastery Path",
+          "description": "...",
+          "nodes": [
+            { "id": "1", "type": "root", "position": { "x": 0, "y": 0 }, "data": { "label": "Start Here", "description": "..." } },
+            ...
+          ],
+          "edges": [
+            { "id": "e1-2", "source": "1", "target": "2", "animated": true }
+          ]
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const jsonStr = text.replace(/```json|```/g, '').trim();
+      return JSON.parse(jsonStr);
+    } catch (err: any) {
+      console.error("AI Roadmap Suggestion Error:", err);
+      throw new Error("AI failed to generate roadmap. Please try again or check your API key.");
+    }
+  },
+
   reScrapeItem: async (id: string) => {
       const item = await JobImportQueue.findById(id);
       if (!item) throw new Error("Item not found");

@@ -11,49 +11,49 @@ import dashboardRoutes from './routes/dashboardRoutes';
 import subscriptionRoutes from './routes/subscriptionRoutes';
 import adminRoutes from './routes/adminRoutes';
 import { errorHandler } from './middleware/errorHandler';
-// import helmet from 'helmet';
+import helmet from 'helmet';
 import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
-// Polyfill for pdf-parse (Vercel/Serverless safety)
-if (typeof (global as any).DOMMatrix === 'undefined') {
-  (global as any).DOMMatrix = class {};
-}
-if (typeof (global as any).ImageData === 'undefined') {
-  (global as any).ImageData = class {};
-}
-if (typeof (global as any).Path2D === 'undefined') {
-  (global as any).Path2D = class {};
-}
-if (typeof (global as any).CanvasRenderingContext2D === 'undefined') {
-  (global as any).CanvasRenderingContext2D = class {};
-}
-
 const app = express();
 const PORT = process.env.PORT || 5001;
+const isProd = process.env.NODE_ENV === 'production';
 
-// CORS configuration - Simplified for debugging
+// CORS configuration - Must be FIRST
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: process.env.ALLOW_ALL === 'true'
+    ? true
+    : isProd 
+      ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+      : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   optionsSuccessStatus: 200
 };
 
-// Request Logger
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  next();
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Security: Rate Limiting (Used after CORS so OPTIONS aren't limited if needed)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests from this IP, please try again after 15 minutes' },
+  skip: (req) => req.method === 'OPTIONS', // Don't rate limit preflight
 });
 
-// Performance & Security Middlewares
-// app.use(helmet());
-app.use(compression());
+// Apply rate limiter to all routes
+app.use('/api/', limiter);
 
-// Enable pre-flight for all routes
-app.set('etag', false); 
-app.use(cors(corsOptions));
-app.use(express.json());
+// Performance & Security Middlewares
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
+app.use(compression());
 
 // DB Connection Import
 import connectDB from './config/db';

@@ -192,6 +192,26 @@ export const importRoadmap = async (req: Request, res: Response) => {
     }
 };
 
+export const generateAIRoadmap = async (req: Request, res: Response) => {
+    try {
+        const { topic } = req.body;
+        if (!topic) {
+            return res.status(400).json({ message: 'Topic is required' });
+        }
+
+        console.log(`🤖 AI Roadmap requested for topic: ${topic}`);
+        const roadmap = await scraperService.suggestRoadmapNodes(topic);
+        
+        res.json({
+            message: 'AI Roadmap generated successfully',
+            roadmap
+        });
+    } catch (error: any) {
+        console.error("AI Generation Error:", error);
+        res.status(500).json({ message: `AI Generation failed: ${error.message}` });
+    }
+};
+
 export const bulkImportRoadmaps = async (req: Request, res: Response) => {
     try {
         console.log("🚀 Starting Bulk Import from pages.json...");

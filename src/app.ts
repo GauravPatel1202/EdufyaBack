@@ -23,11 +23,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // CORS configuration - Must be FIRST
 const corsOptions = {
-  origin: process.env.ALLOW_ALL === 'true'
-    ? true
-    : isProd 
-      ? (process.env.ALLOWED_ORIGINS ? [...process.env.ALLOWED_ORIGINS.split(','), 'https://edufya.com', 'https://www.edufya.com'] : ['https://edufya.com', 'https://www.edufya.com'])
-      : ['http://localhost:3000', 'http://localhost:3001', 'https://edufya.com', 'https://www.edufya.com'],
+  origin: true, // Allow all origins (dynamically reflects request origin)
   credentials: true,
   optionsSuccessStatus: 200
 };

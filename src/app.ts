@@ -19,11 +19,9 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
-const isProd = process.env.NODE_ENV === 'production';
-
 // CORS configuration - Must be FIRST
 const corsOptions = {
-  origin: true, // Allow all origins (dynamically reflects request origin)
+  origin: "*", // Allow all origins (dynamically reflects request origin)
   credentials: true,
   optionsSuccessStatus: 200
 };

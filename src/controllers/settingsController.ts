@@ -13,7 +13,35 @@ export const getSettings = async (req: Request, res: Response) => {
         siteName: 'Edufya',
         primaryColor: '#6366f1',
         secondaryColor: '#a855f7',
-        updatedBy: req.user?.id
+        updatedBy: req.user?.id,
+        plans: [
+            {
+              id: '1',
+              name: 'Basic Student',
+              price: 0,
+              interval: 'Free Forever',
+              features: ['Access to Free Courses', 'Basic Community Support', 'Limited Practice Tests']
+            },
+            {
+              id: '2',
+              name: 'Pro Scholar',
+              price: 350,
+              interval: 'per year',
+              features: ['Unlimited Learning Paths', 'AI Tutor Access', 'Certificate of Completion', 'Priority Support'],
+              popular: true
+            },
+            {
+              id: '3',
+              name: 'Career Plus',
+              price: 999,
+              interval: 'lifetime',
+              features: ['1-on-1 Mentorship', 'Job Placement Assist', 'Resume Review', 'All Pro Features']
+            }
+        ],
+        announcement: {
+            message: "Big update coming next week! Mastery scores are being recalibrated.",
+            enabled: true
+        }
       });
     }
 

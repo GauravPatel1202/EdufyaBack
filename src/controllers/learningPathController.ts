@@ -29,7 +29,16 @@ export const getAllPaths = async (req: Request, res: Response) => {
         ];
     }
     if (category && category !== 'All') query.category = category;
-    if (difficulty && difficulty !== 'all') query.difficulty = difficulty;
+    
+    // Difficulty Safeguard: ignore if "all" or literal "undefined"
+    if (difficulty && difficulty !== 'all' && difficulty !== 'undefined') {
+        query.difficulty = difficulty;
+    }
+
+    // Featured Filter
+    if (req.query.isFeatured === 'true') {
+        query.isFeatured = true;
+    }
 
     // Sorting Logic
     let sortOptions: any = { createdAt: -1 }; // Default: Newest
@@ -292,6 +301,24 @@ export const reviewLearningPath = async (req: Request, res: Response) => {
     if (!path) return res.status(404).json({ error: 'Learning path not found' });
     
     res.json({ message: `Learning path ${status} successfully`, path });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const toggleFeatured = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const path = await LearningPath.findById(id);
+    if (!path) return res.status(404).json({ error: 'Learning path not found' });
+
+    path.isFeatured = !path.isFeatured;
+    await path.save();
+
+    res.json({ 
+      message: `Path ${path.isFeatured ? 'added to' : 'removed from'} featured`, 
+      isFeatured: path.isFeatured 
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

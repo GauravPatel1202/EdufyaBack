@@ -44,6 +44,18 @@ export interface IPlatformSettings extends Document {
     instagram?: string;
     youtube?: string;
   };
+  plans: {
+    id: string;
+    name: string;
+    price: number;
+    interval: string;
+    features: string[];
+    popular?: boolean;
+  }[];
+  announcement: {
+    message: string;
+    enabled: boolean;
+  };
   updatedBy: mongoose.Types.ObjectId;
   updatedAt: Date;
 }
@@ -105,6 +117,18 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>({
     linkedin: String,
     instagram: String,
     youtube: String
+  },
+  plans: [{
+    id: String,
+    name: String,
+    price: Number,
+    interval: String,
+    features: [String],
+    popular: Boolean
+  }],
+  announcement: {
+    message: { type: String, default: '' },
+    enabled: { type: Boolean, default: true }
   },
   updatedBy: {
     type: Schema.Types.ObjectId,

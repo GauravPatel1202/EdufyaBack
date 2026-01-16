@@ -8,4 +8,7 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.get('/verify', authMiddleware, authController.verifyToken);
 
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+
 export default router;

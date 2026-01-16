@@ -5,6 +5,8 @@ export interface IUser extends Document {
   lastName: string;
   email: string;
   password: string;
+  resetPasswordOtp?: string;
+  resetPasswordExpires?: Date;
   role: string;
   targetRoleId: mongoose.Types.ObjectId;
   skillProficiency: Map<string, number>;
@@ -72,6 +74,8 @@ const UserSchema: Schema = new Schema({
   lastName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  resetPasswordOtp: String,
+  resetPasswordExpires: Date,
   role: { type: String, default: 'student' },
   targetRoleId: { type: Schema.Types.ObjectId, ref: 'JobRole' },
   skillProficiency: {

@@ -65,6 +65,7 @@ export interface ILearningPath extends Document {
   tags: string[];
   status: 'pending' | 'published' | 'rejected';
   rejectionReason?: string;
+  isFeatured: boolean;
   createdBy: mongoose.Types.ObjectId;
   nodes: INode[];
   edges: IEdge[];
@@ -145,6 +146,7 @@ const LearningPathSchema: Schema = new Schema({
     default: 'pending' 
   },
   rejectionReason: String,
+  isFeatured: { type: Boolean, default: false },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   nodes: [NodeSchema],
   edges: [EdgeSchema]
@@ -154,6 +156,7 @@ LearningPathSchema.index({ title: 'text' });
 LearningPathSchema.index({ difficulty: 1 });
 LearningPathSchema.index({ category: 1 });
 LearningPathSchema.index({ status: 1 });
+LearningPathSchema.index({ isFeatured: 1 });
 LearningPathSchema.index({ createdBy: 1 });
 
 export default mongoose.model<ILearningPath>('LearningPath', LearningPathSchema);

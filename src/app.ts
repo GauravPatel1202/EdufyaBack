@@ -40,7 +40,6 @@ const limiter = rateLimit({
   message: { message: 'Too many requests from this IP, please try again after 15 minutes' },
   skip: (req) => req.method === 'OPTIONS', // Don't rate limit preflight
 });
-
 // Apply rate limiter to all routes
 app.use('/api/', limiter);
 

@@ -2,6 +2,7 @@ import { scraperService } from '../services/scraperService';
 import { Request, Response } from 'express';
 import User from '../models/User';
 import AdminActivity from '../models/AdminActivity';
+import { emailService } from '../services/emailService';
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -464,5 +465,91 @@ export const reScrapeItem = async (req: Request, res: Response) => {
         res.json({ message: "Item queued for re-scraping" });
     } catch (error) {
         res.status(500).json({ message: "Failed to re-scrape item" });
+    }
+};
+
+// Send notification/email to users
+export const sendNotification = async (req: Request, res: Response) => {
+  try {
+    const { userIds, subject, message, type } = req.body; // type: 'email' | 'system'
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: 'No users selected' });
+    }
+
+    if (!subject || !message) {
+      return res.status(400).json({ message: 'Subject and message are required' });
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    // Fetch user emails
+    const users = await User.find({ _id: { $in: userIds } }).select('email firstName');
+
+    // Process in parallel (limit concurrency in real app, simply loops here)
+    const emailPromises = users.map(async (user) => {
+      try {
+        if (type === 'email') {
+          // Construct HTML (wrap message in a basic template)
+          const html = `
+            <div style="font-family: sans-serif; padding: 20px;">
+              <h2>Hello ${user.firstName},</h2>
+              <p>${message.replace(/\n/g, '<br>')}</p>
+              <hr />
+              <p style="font-size: 12px; color: #888;">Sent via Edufya Admin Console</p>
+            </div>
+          `;
+          
+          // Use Queue instead of direct send for better scalability
+          await emailService.addToQueue(user.email, subject, html);
+          successCount++;
+        } else {
+           // System notification logic (TODO: store in Notification model)
+           // successCount++; 
+        }
+      } catch (err) {
+        console.error(`Failed to notify user ${user.email}:`, err);
+        failCount++;
+      }
+    });
+
+    await Promise.all(emailPromises);
+
+    // Trigger queue processing (background)
+    emailService.processQueue();
+
+    // Log Activity
+    if (req.user?.id) {
+      await AdminActivity.create({
+        adminId: req.user.id,
+        action: 'create', // notification creation
+        resource: 'user', // targeting users
+        details: {
+          description: `Sent ${type} notification to ${successCount} users: "${subject}"`,
+          metadata: { successCount, failCount }
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.get('user-agent')
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Sent to ${successCount} users (${failCount} failed)`,
+      stats: { success: successCount, failed: failCount }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const processEmailQueue = async (req: Request, res: Response) => {
+    try {
+        emailService.processQueue(); // Fire and forget
+        res.json({ message: "Email queue processing started" });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };

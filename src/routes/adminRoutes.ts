@@ -1,9 +1,30 @@
 import express from 'express';
-import * as adminController from '../controllers/adminController';
 import * as analyticsController from '../controllers/analyticsController';
 import * as settingsController from '../controllers/settingsController';
 import * as contentLibraryController from '../controllers/contentLibraryController';
 import { authMiddleware, isAdmin as requireAdmin } from '../middleware/auth';
+import {
+  getAllUsers,
+  updateUserRole,
+  deleteUser,
+  updateUserSubscription,
+  bulkDeleteUsers,
+  exportUsers,
+  importUsers,
+  updateNodeContent,
+  bulkUpdateNodes,
+  getActivityLogs,
+  getAdminJobs,
+  updateJobBoardSettings,
+  updateJobStatus,
+  bulkImportJobs,
+  getImportQueueStatus,
+  runScraper,
+  retryFailedImports,
+  reScrapeItem,
+  sendNotification,
+  processEmailQueue
+} from '../controllers/adminController';
 
 
 const router = express.Router();
@@ -12,26 +33,26 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // User Management
-router.get('/users', adminController.getAllUsers);
-router.put('/users/:userId/role', adminController.updateUserRole);
-router.delete('/users/:userId', adminController.deleteUser);
-router.put('/users/:userId/subscription', adminController.updateUserSubscription);
-router.delete('/users/bulk', adminController.bulkDeleteUsers);
-router.post('/users/export', adminController.exportUsers);
-router.post('/users/import', adminController.importUsers);
+router.get('/users', getAllUsers);
+router.put('/users/:userId/role', updateUserRole);
+router.delete('/users/:userId', deleteUser);
+router.put('/users/:userId/subscription', updateUserSubscription);
+router.delete('/users/bulk', bulkDeleteUsers);
+router.post('/users/export', exportUsers);
+router.post('/users/import', importUsers);
 
 
 // Learning Path Content Management
-router.put('/learning-paths/:pathId/nodes/:nodeId', adminController.updateNodeContent);
-router.put('/learning-paths/:pathId/nodes/bulk', adminController.bulkUpdateNodes);
+router.put('/learning-paths/:pathId/nodes/:nodeId', updateNodeContent);
+router.put('/learning-paths/:pathId/nodes/bulk', bulkUpdateNodes);
 
 // Activity Logs
-router.get('/activity-logs', adminController.getActivityLogs);
+router.get('/activity-logs', getActivityLogs);
 
 // Job Management
-router.get('/jobs', adminController.getAdminJobs);
-router.put('/jobs/settings', adminController.updateJobBoardSettings);
-router.put('/jobs/:id/status', adminController.updateJobStatus);
+router.get('/jobs', getAdminJobs);
+router.put('/jobs/settings', updateJobBoardSettings);
+router.put('/jobs/:id/status', updateJobStatus);
 
 // Analytics
 router.get('/analytics/overview', analyticsController.getOverview);
@@ -56,13 +77,16 @@ router.post('/content/bulk-upload', contentLibraryController.bulkUpload);
 router.get('/content/stats', contentLibraryController.getContentStats);
 
 // Bulk Job Import Routes
-router.post('/jobs/bulk-import', adminController.bulkImportJobs);
-router.get('/jobs/bulk-import/status', adminController.getImportQueueStatus);
-router.post('/jobs/bulk-import/run', adminController.runScraper);
-router.post('/jobs/bulk-import/retry', adminController.retryFailedImports);
-router.post('/jobs/bulk-import/:id/retry', adminController.reScrapeItem);
+router.post('/jobs/bulk-import', bulkImportJobs);
+router.get('/jobs/bulk-import/status', getImportQueueStatus);
+router.post('/jobs/bulk-import/run', runScraper);
+router.post('/jobs/bulk-import/retry', retryFailedImports);
+router.post('/jobs/bulk-import/:id/retry', reScrapeItem);
 
-// Roadmap Import
+// Notifications
+router.post('/notifications/send', requireAdmin, sendNotification);
+router.post('/notifications/process-queue', requireAdmin, processEmailQueue);
+
 // Roadmap Import
 import { importRoadmap, bulkImportRoadmaps, generateAIRoadmap } from '../controllers/roadmapController';
 router.post('/learning-paths/import/roadmap', authMiddleware, requireAdmin, importRoadmap);

@@ -10,7 +10,8 @@ import {
     updateLearningPath,
     deleteLearningPath,
     unenrollFromPath,
-    reviewLearningPath
+    reviewLearningPath,
+    toggleFeatured
 } from '../controllers/learningPathController';
 import { authenticateToken, isAdmin } from '../middleware/auth';
 import { checkSubscription } from '../middleware/subscription';
@@ -30,5 +31,6 @@ router.post('/', authenticateToken, isAdmin, createLearningPath);
 router.put('/:id', authenticateToken, isAdmin, updateLearningPath);
 router.delete('/:id', authenticateToken, isAdmin, deleteLearningPath);
 router.put('/:id/review', authenticateToken, isAdmin, reviewLearningPath);
+router.put('/:id/featured', authenticateToken, isAdmin, toggleFeatured);
 
 export default router;

@@ -10,6 +10,7 @@ import learningPathRoutes from './routes/learningPathRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import subscriptionRoutes from './routes/subscriptionRoutes';
 import adminRoutes from './routes/adminRoutes';
+import referralRoutes from './routes/referralRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -34,7 +35,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Security: Rate Limiting (Used after CORS so OPTIONS aren't limited if needed)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 1000, // Limit each IP to 1000 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many requests from this IP, please try again after 15 minutes' },
@@ -91,6 +92,7 @@ app.use('/api/learning-paths', learningPathRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/referral', referralRoutes);
 
 // Error Handling
 app.use(errorHandler);

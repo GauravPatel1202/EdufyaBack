@@ -23,7 +23,8 @@ import {
   retryFailedImports,
   reScrapeItem,
   sendNotification,
-  processEmailQueue
+  processEmailQueue,
+  getReferralStats
 } from '../controllers/adminController';
 
 
@@ -86,6 +87,9 @@ router.post('/jobs/bulk-import/:id/retry', reScrapeItem);
 // Notifications
 router.post('/notifications/send', requireAdmin, sendNotification);
 router.post('/notifications/process-queue', requireAdmin, processEmailQueue);
+
+// Referral Stats
+router.get('/referrals/stats', requireAdmin, getReferralStats);
 
 // Roadmap Import
 import { importRoadmap, bulkImportRoadmaps, generateAIRoadmap } from '../controllers/roadmapController';

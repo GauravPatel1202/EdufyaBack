@@ -50,6 +50,15 @@ export interface IUser extends Document {
     startDate?: Date;
     expiryDate?: Date;
   };
+  referralCode?: string;
+  referredBy?: mongoose.Types.ObjectId;
+  walletBalance: number;
+  referralRewards: {
+    referredUser: mongoose.Types.ObjectId | string;
+    amount: number;
+    date: Date;
+    status: 'Pending' | 'Paid';
+  }[];
 }
 
 const ExperienceSchema = new Schema({
@@ -127,7 +136,17 @@ const UserSchema: Schema = new Schema({
     status: { type: String, enum: ['active', 'inactive'], default: 'inactive' },
     startDate: Date,
     expiryDate: Date
-  }
+  },
+  // Referral System
+  referralCode: { type: String, unique: true, sparse: true },
+  referredBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  walletBalance: { type: Number, default: 0 },
+  referralRewards: [{
+    referredUser: { type: Schema.Types.ObjectId, ref: 'User' },
+    amount: Number,
+    date: { type: Date, default: Date.now },
+    status: { type: String, enum: ['Pending', 'Paid'], default: 'Paid' } // 'Paid' means credited to wallet
+  }]
 }, { timestamps: true });
 
 UserSchema.index({ role: 1 });

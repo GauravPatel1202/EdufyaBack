@@ -16,6 +16,23 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'User already exists' });
     }
 
+    // Handle Referral Code lookup
+    let referrer = null;
+    let referredByUserId = undefined;
+
+    if (req.body.referralCode) {
+      referrer = await User.findOne({ referralCode: req.body.referralCode });
+      if (referrer) {
+        referredByUserId = referrer._id;
+      }
+    }
+
+    // Generate Referral Code for New User
+    // Pattern: First 4 chars of name + 4 random numbers
+    const baseCode = (firstName || 'USER').substring(0, 4).toUpperCase();
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const newReferralCode = `${baseCode}${randomNum}`;
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -25,11 +42,30 @@ export const register = async (req: Request, res: Response) => {
       password: hashedPassword,
       firstName,
       lastName,
-      role: 'student'
+      role: 'student',
+      referralCode: newReferralCode,
+      referredBy: referredByUserId,
+      walletBalance: 200, // Signup Bonus (200 Coins)
       // Subscription will be inactive by default
     });
 
     await newUser.save();
+
+    // Create Pending Reward for Referrer if one exists
+    if (referrer) {
+        try {
+            // Add pending reward - wallet is NOT credited yet
+            referrer.referralRewards.push({
+                referredUser: newUser._id as any, 
+                amount: 500,
+                date: new Date(),
+                status: 'Pending'
+            });
+            await referrer.save();
+        } catch (rewardError) {
+            console.error("Failed to create pending reward:", rewardError);
+        }
+    }
 
     // Send welcome email (non-blocking)
     emailService.sendWelcomeEmail(newUser.email, newUser.firstName).catch(err => 
@@ -52,7 +88,10 @@ export const register = async (req: Request, res: Response) => {
         firstName: newUser.firstName,
         lastName: newUser.lastName,
         role: newUser.role,
-        subscription: newUser.subscription
+        subscription: newUser.subscription,
+        walletBalance: newUser.walletBalance || 0,
+        totalEarnings: newUser.referralRewards ? newUser.referralRewards.reduce((acc, curr) => acc + curr.amount, 0) : 0,
+        referralCode: newUser.referralCode
       }
     });
   } catch (error: any) {
@@ -93,7 +132,10 @@ export const login = async (req: Request, res: Response) => {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-        subscription: user.subscription
+        subscription: user.subscription,
+        walletBalance: user.walletBalance || 0,
+        totalEarnings: user.referralRewards ? user.referralRewards.reduce((acc: number, curr: any) => acc + curr.amount, 0) : 0,
+        referralCode: user.referralCode
       }
     });
   } catch (error: any) {
@@ -118,7 +160,10 @@ export const verifyToken = async (req: Request, res: Response) => {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-        subscription: user.subscription
+        subscription: user.subscription,
+        walletBalance: user.walletBalance || 0,
+        totalEarnings: user.referralRewards ? user.referralRewards.reduce((acc: number, curr: any) => acc + curr.amount, 0) : 0,
+        referralCode: user.referralCode
       }
     });
   } catch (error: any) {

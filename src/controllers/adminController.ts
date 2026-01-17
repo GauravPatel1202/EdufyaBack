@@ -7,7 +7,18 @@ import { emailService } from '../services/emailService';
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find().select('-password');
-    res.json(users);
+    
+    // Calculate referral stats for each user
+    const usersWithStats = users.map(user => {
+        const u = user.toObject();
+        return {
+            ...u,
+            referralCount: user.referralRewards ? user.referralRewards.length : 0,
+            totalEarnings: user.referralRewards ? user.referralRewards.reduce((acc, curr) => acc + curr.amount, 0) : 0
+        };
+    });
+
+    res.json(usersWithStats);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -552,4 +563,65 @@ export const processEmailQueue = async (req: Request, res: Response) => {
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
+};
+
+export const getReferralStats = async (req: Request, res: Response) => {
+  try {
+    // 1. Total Referrals (Users who have a referredBy field)
+    const totalReferrals = await User.countDocuments({ referredBy: { $exists: true, $ne: null } });
+
+    // 2. Total Rewards Distributed
+    // Aggregate sum of all 'amount' in 'referralRewards' array across all users
+    const [rewardsStats] = await User.aggregate([
+      { $unwind: "$referralRewards" },
+      { $group: { _id: null, totalAmount: { $sum: "$referralRewards.amount" } } }
+    ]);
+    const totalRewards = rewardsStats ? rewardsStats.totalAmount : 0;
+
+    // 3. Top Referrers
+    const topReferrers = await User.aggregate([
+      { $match: { referralCode: { $exists: true } } },
+      // To find how many people they referred, we actually need to look at the 'referredBy' field of OTHER users.
+      // But we can also look at their 'referralRewards' length if every referral gives a reward. 
+      // A more robust way is to lookup the User collection.
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: 'referredBy',
+          as: 'referees'
+        }
+      },
+      {
+        $project: {
+          firstName: 1,
+          lastName: 1,
+          email: 1,
+          referralCode: 1,
+          referralCount: { $size: "$referees" },
+          totalEarned: { $sum: "$referralRewards.amount" }
+        }
+      },
+      { $sort: { referralCount: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // 4. Recent Referral Activity
+    // Fetch users who were recently referred (sorted by createdAt)
+    const recentReferrals = await User.find({ referredBy: { $exists: true, $ne: null } })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('referredBy', 'firstName lastName email referralCode')
+      .select('firstName lastName email createdAt referredBy');
+
+    res.json({
+      totalReferrals,
+      totalRewards,
+      topReferrers,
+      recentReferrals
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
 };

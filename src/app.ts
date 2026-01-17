@@ -11,6 +11,7 @@ import dashboardRoutes from './routes/dashboardRoutes';
 import subscriptionRoutes from './routes/subscriptionRoutes';
 import adminRoutes from './routes/adminRoutes';
 import referralRoutes from './routes/referralRoutes';
+import analyticsRoutes from './routes/analyticsRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -93,6 +94,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/referral', referralRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Error Handling
 app.use(errorHandler);

@@ -123,6 +123,11 @@ export const login = async (req: Request, res: Response) => {
       { expiresIn: '7d' }
     );
 
+    // Update lastLogin and loginCount
+    user.lastLogin = new Date();
+    user.loginCount = (user.loginCount || 0) + 1;
+    await user.save();
+
     res.json({
       message: 'Login successful',
       token,

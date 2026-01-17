@@ -3,6 +3,7 @@ import User from '../models/User';
 import LearningPath from '../models/LearningPath';
 import AdminActivity from '../models/AdminActivity';
 import UserLearningProgress from '../models/UserLearningProgress';
+import Visitor from '../models/Visitor';
 import mongoose from 'mongoose';
 
 // Get dashboard overview statistics
@@ -13,14 +14,26 @@ export const getOverview = async (req: Request, res: Response) => {
       totalPaths,
       totalActivities,
       recentUsers,
-      recentActivities
+      recentActivities,
+      newUsersToday,
+      loggedInToday,
+      guestsToday,
+      repetitiveGuests
     ] = await Promise.all([
       User.countDocuments(),
       LearningPath.countDocuments(),
       AdminActivity.countDocuments(),
       User.countDocuments({ createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
-      AdminActivity.countDocuments({ timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } })
+      AdminActivity.countDocuments({ timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }),
+      // New metrics
+      User.countDocuments({ createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } }), // New users today
+      User.countDocuments({ lastLogin: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } }), // Logged in users today
+      Visitor.countDocuments({ lastVisit: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } }), // Guest users today
+      Visitor.countDocuments({ visitCount: { $gt: 1 } }) // Repetitive guest users
     ]);
+
+    // Repetitive logged-in users (loginCount > 1)
+    const repetitiveUsers = await User.countDocuments({ loginCount: { $gt: 1 } });
 
     const usersByRole = await User.aggregate([
       { $group: { _id: '$role', count: { $sum: 1 } } }
@@ -60,7 +73,11 @@ export const getOverview = async (req: Request, res: Response) => {
         recentActivities,
         totalNodes: pathStats[0]?.totalNodes || 0,
         avgPathDuration: Math.round(pathStats[0]?.avgDuration || 0),
-        completionRate: Math.round(progressStats[0]?.avgCompletion || 0)
+        completionRate: Math.round(progressStats[0]?.avgCompletion || 0),
+        newUsersToday,
+        loggedInToday,
+        guestUsersToday: guestsToday,
+        repetitiveUsers: repetitiveUsers + repetitiveGuests
       },
       usersByRole: usersByRole.reduce((acc, item) => {
         acc[item._id] = item.count;
@@ -373,3 +390,24 @@ function convertToCSV(data: any): string {
   // Simple CSV conversion - can be enhanced
   return JSON.stringify(data);
 }
+// Track anonymous visitor
+export const trackVisitor = async (req: Request, res: Response) => {
+  try {
+    const { visitorId } = req.body;
+    if (!visitorId) return res.status(400).json({ message: 'Visitor ID is required' });
+
+    let visitor = await Visitor.findOne({ visitorId });
+    if (visitor) {
+      visitor.lastVisit = new Date();
+      visitor.visitCount += 1;
+      await visitor.save();
+    } else {
+      visitor = new Visitor({ visitorId });
+      await visitor.save();
+    }
+
+    res.json({ message: 'Visitor tracked', visitor });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

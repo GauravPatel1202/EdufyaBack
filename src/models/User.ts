@@ -59,6 +59,8 @@ export interface IUser extends Document {
     date: Date;
     status: 'Pending' | 'Paid';
   }[];
+  lastLogin?: Date;
+  loginCount: number;
 }
 
 const ExperienceSchema = new Schema({
@@ -146,7 +148,9 @@ const UserSchema: Schema = new Schema({
     amount: Number,
     date: { type: Date, default: Date.now },
     status: { type: String, enum: ['Pending', 'Paid'], default: 'Paid' } // 'Paid' means credited to wallet
-  }]
+  }],
+  lastLogin: Date,
+  loginCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 UserSchema.index({ role: 1 });
